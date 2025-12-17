@@ -28,17 +28,35 @@
             android:name=".ui.QuanLySinhVien"
             android:exported="false"
             android:label="Danh Sách Sinh Viên"
-            android:parentActivityName=".ui.MainActivity" /> <!-- Add Student -->
+            android:parentActivityName=".ui.MainActivity" />
         <activity
             android:name=".ui.AddSinhVienActivity"
             android:exported="false"
             android:label="Thêm Sinh Viên"
-            android:parentActivityName=".ui.QuanLySinhVien" /> <!-- Edit Student -->
+            android:parentActivityName=".ui.QuanLySinhVien" />
         <activity
             android:name=".ui.EditSinhVienActivity"
             android:exported="false"
             android:label="Cập Nhật Sinh Viên"
             android:parentActivityName=".ui.QuanLySinhVien" />
+
+        <!-- Thêm các activity còn thiếu -->
+        <activity
+            android:name=".ui.QuanLyLopActivity"
+            android:exported="false"
+            android:label="Quản Lý Lớp"
+            android:parentActivityName=".ui.MainActivity" />
+        <activity
+            android:name=".ui.QuanLyMonHocActivity"
+            android:exported="false"
+            android:label="Quản Lý Môn Học"
+            android:parentActivityName=".ui.MainActivity" />
+        <activity
+            android:name=".ui.QuanLyGiangVienActivity"
+            android:exported="false"
+            android:label="Quản Lý Giảng Viên"
+            android:parentActivityName=".ui.MainActivity" />
+
     </application>
 
 </manifest>

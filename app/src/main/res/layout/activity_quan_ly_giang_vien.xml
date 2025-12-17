@@ -13,7 +13,7 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="10dp">
         <ImageButton android:id="@+id/btnBackGV" android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_menu_revert" android:background="?attr/selectableItemBackgroundBorderless"/>
-        <TextView android:layout_width="0dp" android:layout_weight="1" android:text="QUẢN LÝ GIẢNG VIÊN" android:textSize="20sp" android:textStyle="bold" android:gravity="center"/>
+        <TextView android:layout_width="0dp" android:layout_height="1dp" android:text="QUẢN LÝ GIẢNG VIÊN" android:textSize="20sp" android:textStyle="bold" android:gravity="center"/>
         <View android:layout_width="40dp" android:layout_height="40dp"/>
     </LinearLayout>
 
