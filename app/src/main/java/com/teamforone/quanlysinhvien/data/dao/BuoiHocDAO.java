@@ -24,13 +24,12 @@ public class BuoiHocDAO {
         SQLiteDatabase db = databaseProvider.getWritableDatabase();
         try {
             ContentValues values = new ContentValues();
-            values.put("maMonHoc", buoiHoc.getMaMonHoc());
+            values.put("maMH", buoiHoc.getMaMonHoc());
             values.put("maGV", buoiHoc.getMaGV());
             values.put("maLop", buoiHoc.getMaLop());
             values.put("ngayHoc", buoiHoc.getNgayHoc());
             values.put("tietBatDau", buoiHoc.getTietBatDau());
             values.put("tietKetThuc", buoiHoc.getTietKetThuc());
-            values.put("ghiChu", buoiHoc.getGhiChu());
 
             long result = db.insert("BUOI_HOC", null, values);
             if (result != -1) {
@@ -47,13 +46,12 @@ public class BuoiHocDAO {
         SQLiteDatabase db = databaseProvider.getWritableDatabase();
         try {
             ContentValues values = new ContentValues();
-            values.put("maMonHoc", buoiHoc.getMaMonHoc());
+            values.put("maMH", buoiHoc.getMaMonHoc());
             values.put("maGV", buoiHoc.getMaGV());
             values.put("maLop", buoiHoc.getMaLop());
             values.put("ngayHoc", buoiHoc.getNgayHoc());
             values.put("tietBatDau", buoiHoc.getTietBatDau());
             values.put("tietKetThuc", buoiHoc.getTietKetThuc());
-            values.put("ghiChu", buoiHoc.getGhiChu());
 
             int result = db.update("BUOI_HOC", values, "id = ?",
                     new String[]{String.valueOf(buoiHoc.getId())});
@@ -86,12 +84,15 @@ public class BuoiHocDAO {
         List<BuoiHoc> list = new ArrayList<>();
         SQLiteDatabase db = databaseProvider.getReadableDatabase();
 
-        String query = "SELECT b.*, m.tenMonHoc, g.hoTen as hoTenGV, l.tenLop " +
-                "FROM BUOI_HOC b " +
-                "LEFT JOIN MONHOC m ON b.maMonHoc = m.maMonHoc " +
-                "LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV " +
-                "LEFT JOIN LOP l ON b.maLop = l.maLop " +
-                "ORDER BY b.ngayHoc DESC, b.tietBatDau";
+        String query =
+                "SELECT b.*, m.tenMH, g.hoTen AS hoTenGV, l.tenLop " +
+                        "FROM BUOI_HOC b " +
+                        "LEFT JOIN MONHOC m ON b.maMH = m.maMH " +
+                        "LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV " +
+                        "LEFT JOIN LOP l ON b.maLop = l.maLop " +
+                        "ORDER BY b.ngayHoc DESC, b.tietBatDau";
+
+
 
         Cursor cursor = null;
         try {
@@ -114,9 +115,9 @@ public class BuoiHocDAO {
         List<BuoiHoc> list = new ArrayList<>();
         SQLiteDatabase db = databaseProvider.getReadableDatabase();
 
-        String query = "SELECT b.*, m.tenMonHoc, g.hoTen as hoTenGV, l.tenLop " +
+        String query = "SELECT b.*, m.tenMH, g.hoTen as hoTenGV, l.tenLop " +
                 "FROM BUOI_HOC b " +
-                "LEFT JOIN MONHOC m ON b.maMonHoc = m.maMonHoc " +
+                "LEFT JOIN MONHOC m ON b.maMH = m.maMH " +
                 "LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV " +
                 "LEFT JOIN LOP l ON b.maLop = l.maLop " +
                 "WHERE b.maLop = ? " +
@@ -140,9 +141,9 @@ public class BuoiHocDAO {
 
     public BuoiHoc getById(int id) {
         SQLiteDatabase db = databaseProvider.getReadableDatabase();
-        String query = "SELECT b.*, m.tenMonHoc, g.hoTen as hoTenGV, l.tenLop " +
+        String query = "SELECT b.*, m.tenMH, g.hoTen as hoTenGV, l.tenLop " +
                 "FROM BUOI_HOC b " +
-                "LEFT JOIN MONHOC m ON b.maMonHoc = m.maMonHoc " +
+                "LEFT JOIN MONHOC m ON b.maMH = m.maMH " +
                 "LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV " +
                 "LEFT JOIN LOP l ON b.maLop = l.maLop " +
                 "WHERE b.id = ?";

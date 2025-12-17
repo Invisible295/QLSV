@@ -18,7 +18,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private final String databaseName;
 
     // Phiên bản DB, dùng để nâng cấp nếu cần
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     private DatabaseHelper(Context context, String databaseName) {
         super(context, databaseName, null, DATABASE_VERSION);
@@ -84,6 +84,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         // Xử lý nâng cấp nếu cần
+        db.execSQL("DROP TABLE IF EXISTS USERS");
+        onCreate(db);
     }
 
     @Override

@@ -59,13 +59,16 @@
         <activity android:name=".ui.ReportActivity"/>
         <activity
             android:name=".ui.DanhSachBuoiHocActivity"
-            android:exported="false"/>
+            android:exported="false"
+            android:parentActivityName=".ui.MainActivity"/>
         <activity
             android:name=".ui.DiemDanhActivity"
-            android:exported="false"/>
+            android:exported="false"
+            android:parentActivityName=".ui.DanhSachBuoiHocActivity"/>
         <activity
             android:name=".ui.TaoBuoiHocActivity"
-            android:exported="false"/>
+            android:exported="false"
+            android:parentActivityName=".ui.DanhSachBuoiHocActivity"/>
 
 
 
