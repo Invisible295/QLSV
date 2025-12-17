@@ -21,6 +21,8 @@ public class RegisterActivity extends AppCompatActivity {
     private RadioButton rbStudent, rbTeacher;
     private Button btnRegister, btnBackToLogin;
 
+    private RadioButton rbAdmin;
+
     private RegisterUseCase registerUseCase;
 
     @Override
@@ -33,6 +35,7 @@ public class RegisterActivity extends AppCompatActivity {
         rgRole = findViewById(R.id.rgRole);
         rbStudent = findViewById(R.id.rbStudent);
         rbTeacher = findViewById(R.id.rbTeacher);
+        rbAdmin = findViewById(R.id.rbAdmin);
         btnRegister = findViewById(R.id.btnRegister);
         btnBackToLogin = findViewById(R.id.btnBackLogin);
         etConfirmPassword = findViewById(R.id.etConfirmPassword);
@@ -62,10 +65,13 @@ public class RegisterActivity extends AppCompatActivity {
             role = User.Role.STUDENT;
         } else if (selectedId == rbTeacher.getId()) {
             role = User.Role.TEACHER;
+        } else if (selectedId == rbAdmin.getId()) {
+            role = User.Role.ADMIN;
         } else {
             Toast.makeText(this, "Vui lòng chọn role", Toast.LENGTH_SHORT).show();
             return;
         }
+
 
         String passwordPattern = "^(?=.*[A-Z])(?=.*\\d).{8,}$";
         if (!password.matches(passwordPattern)) {
