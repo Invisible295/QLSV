@@ -1,0 +1,2813 @@
+Index: app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.teamforone.quanlysinhvien.ui;\r\n\r\nimport android.content.DialogInterface;\r\nimport android.content.Intent;\r\nimport android.os.Bundle;\r\nimport android.text.Editable;\r\nimport android.text.TextWatcher;\r\nimport android.view.View;\r\nimport android.widget.AdapterView;\r\nimport android.widget.ArrayAdapter;\r\nimport android.widget.Button;\r\nimport android.widget.EditText;\r\nimport android.widget.Spinner;\r\nimport android.widget.TextView;\r\nimport android.widget.Toast;\r\nimport androidx.appcompat.app.AlertDialog;\r\nimport androidx.appcompat.app.AppCompatActivity;\r\nimport androidx.appcompat.widget.Toolbar;\r\nimport androidx.recyclerview.widget.LinearLayoutManager;\r\nimport androidx.recyclerview.widget.RecyclerView;\r\nimport com.google.android.material.floatingactionbutton.FloatingActionButton;\r\nimport com.teamforone.quanlysinhvien.R;\r\nimport com.teamforone.quanlysinhvien.domain.model.SinhVien;\r\nimport com.teamforone.quanlysinhvien.service.SinhVienService;\r\nimport com.teamforone.quanlysinhvien.util.AppLogger;\r\nimport com.teamforone.quanlysinhvien.util.Constants;\r\n\r\nimport java.util.ArrayList;\r\nimport java.util.List;\r\n\r\npublic class MainActivity extends AppCompatActivity implements SinhVienAdapter.OnItemClickListener{\r\n\r\n    private RecyclerView recyclerView;\r\n    private SinhVienAdapter adapter;\r\n    private SinhVienService sinhVienService;\r\n    private List<SinhVien> sinhVienList;\r\n\r\n    private EditText etSearch;\r\n    private Spinner spinnerLop;\r\n    private TextView tvEmpty;\r\n    private Button btnSearch, btnResetFilter;\r\n    private FloatingActionButton fabAdd;\r\n\r\n    private String currentFilter = Constants.FILTER_ALL;\r\n\r\n    @Override\r\n    protected void onCreate(Bundle savedInstanceState) {\r\n        super.onCreate(savedInstanceState);\r\n        setContentView(R.layout.quanlysinhvien);\r\n\r\n        AppLogger.d(Constants.LOG_TAG_UI, \"MainActivity created\");\r\n\r\n        setupToolbar();\r\n        initViews();\r\n        initService();\r\n        setupRecyclerView();\r\n        setupSpinner();\r\n        setupListeners();\r\n        loadData();\r\n    }\r\n\r\n    private void setupToolbar() {\r\n        Toolbar toolbar = findViewById(R.id.toolbar);\r\n        setSupportActionBar(toolbar);\r\n    }\r\n\r\n    private void initViews() {\r\n        recyclerView = findViewById(R.id.recyclerView);\r\n        etSearch = findViewById(R.id.etSearch);\r\n        spinnerLop = findViewById(R.id.spinnerLop);\r\n        tvEmpty = findViewById(R.id.tvEmpty);\r\n        btnSearch = findViewById(R.id.btnSearch);\r\n        btnResetFilter = findViewById(R.id.btnResetFilter);\r\n        fabAdd = findViewById(R.id.fabAdd);\r\n    }\r\n\r\n    private void initService() {\r\n        sinhVienService = SinhVienService.getInstance(this);\r\n    }\r\n\r\n    private void setupRecyclerView() {\r\n        recyclerView.setLayoutManager(new LinearLayoutManager(this));\r\n        sinhVienList = new ArrayList<>();\r\n        adapter = new SinhVienAdapter(sinhVienList, this);\r\n        recyclerView.setAdapter(adapter);\r\n    }\r\n\r\n    private void setupSpinner() {\r\n        List<String> lopList = sinhVienService.getAllLopNames();\r\n        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(\r\n                this,\r\n                android.R.layout.simple_spinner_item,\r\n                lopList\r\n        );\r\n        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);\r\n        spinnerLop.setAdapter(spinnerAdapter);\r\n    }\r\n\r\n    private void setupListeners() {\r\n        fabAdd.setOnClickListener(v -> {\r\n            Intent intent = new Intent(MainActivity.this, AddSinhVienActivity.class);\r\n            startActivity(intent);\r\n        });\r\n\r\n        btnSearch.setOnClickListener(v -> performSearch());\r\n\r\n        etSearch.addTextChangedListener(new TextWatcher() {\r\n            @Override\r\n            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}\r\n\r\n            @Override\r\n            public void onTextChanged(CharSequence s, int start, int before, int count) {\r\n                if (s.toString().isEmpty()) {\r\n                    loadData();\r\n                }\r\n            }\r\n\r\n            @Override\r\n            public void afterTextChanged(Editable s) {}\r\n        });\r\n\r\n        spinnerLop.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {\r\n            @Override\r\n            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {\r\n                String selected = parent.getItemAtPosition(position).toString();\r\n                currentFilter = selected;\r\n                applyFilter();\r\n            }\r\n\r\n            @Override\r\n            public void onNothingSelected(AdapterView<?> parent) {}\r\n        });\r\n\r\n        btnResetFilter.setOnClickListener(v -> resetFilters());\r\n    }\r\n\r\n    private void loadData() {\r\n        AppLogger.d(Constants.LOG_TAG_UI, \"Loading all data\");\r\n        sinhVienList = sinhVienService.getAllSinhVien();\r\n        updateUI();\r\n    }\r\n\r\n    private void performSearch() {\r\n        String keyword = etSearch.getText().toString().trim();\r\n        if (!keyword.isEmpty()) {\r\n            AppLogger.d(Constants.LOG_TAG_UI, \"Performing search: \" + keyword);\r\n            sinhVienList = sinhVienService.searchSinhVien(keyword);\r\n            updateUI();\r\n        } else {\r\n            Toast.makeText(this, \"Vui lòng nhập từ khóa tìm kiếm\", Toast.LENGTH_SHORT).show();\r\n        }\r\n    }\r\n\r\n    private void applyFilter() {\r\n        if (currentFilter.equals(Constants.FILTER_ALL)) {\r\n            loadData();\r\n        } else {\r\n            String maLop = currentFilter.split(\" - \")[0];\r\n            AppLogger.d(Constants.LOG_TAG_UI, \"Applying filter: \" + maLop);\r\n            sinhVienList = sinhVienService.filterByLop(maLop);\r\n            updateUI();\r\n        }\r\n    }\r\n\r\n    private void resetFilters() {\r\n        spinnerLop.setSelection(0);\r\n        etSearch.setText(\"\");\r\n        loadData();\r\n        Toast.makeText(this, \"Đã reset bộ lọc\", Toast.LENGTH_SHORT).show();\r\n    }\r\n\r\n    private void updateUI() {\r\n        if (sinhVienList.isEmpty()) {\r\n            recyclerView.setVisibility(View.GONE);\r\n            tvEmpty.setVisibility(View.VISIBLE);\r\n        } else {\r\n            recyclerView.setVisibility(View.VISIBLE);\r\n            tvEmpty.setVisibility(View.GONE);\r\n        }\r\n        adapter.updateList(sinhVienList);\r\n        AppLogger.d(Constants.LOG_TAG_UI, \"UI updated with \" + sinhVienList.size() + \" items\");\r\n    }\r\n\r\n    @Override\r\n    public void onEditClick(SinhVien sinhVien) {\r\n        AppLogger.d(Constants.LOG_TAG_UI, \"Edit clicked for: \" + sinhVien.getMaSV());\r\n        Intent intent = new Intent(MainActivity.this, EditSinhVienActivity.class);\r\n        intent.putExtra(Constants.EXTRA_MA_SV, sinhVien.getMaSV());\r\n        intent.putExtra(Constants.EXTRA_HO_TEN, sinhVien.getHoTen());\r\n        intent.putExtra(Constants.EXTRA_NGAY_SINH, sinhVien.getNgaySinh());\r\n        intent.putExtra(Constants.EXTRA_GIOI_TINH, sinhVien.getGioiTinh());\r\n        intent.putExtra(Constants.EXTRA_DIA_CHI, sinhVien.getDiaChi());\r\n        intent.putExtra(Constants.EXTRA_MA_LOP, sinhVien.getMaLop());\r\n        startActivity(intent);\r\n    }\r\n\r\n    @Override\r\n    public void onDeleteClick(SinhVien sinhVien) {\r\n        showDeleteConfirmDialog(sinhVien);\r\n    }\r\n\r\n    private void showDeleteConfirmDialog(SinhVien sinhVien) {\r\n        new AlertDialog.Builder(this)\r\n                .setTitle(\"Xác nhận xóa\")\r\n                .setMessage(\"Bạn có chắc chắn muốn xóa sinh viên \" + sinhVien.getHoTen() +\r\n                        \" (Mã: \" + sinhVien.getMaSV() + \") không?\")\r\n                .setPositiveButton(\"Xóa\", new DialogInterface.OnClickListener() {\r\n                    @Override\r\n                    public void onClick(DialogInterface dialog, int which) {\r\n                        deleteSinhVien(sinhVien.getMaSV());\r\n                    }\r\n                })\r\n                .setNegativeButton(\"Hủy\", null)\r\n                .setIcon(android.R.drawable.ic_dialog_alert)\r\n                .show();\r\n    }\r\n\r\n    private void deleteSinhVien(String maSV) {\r\n        if (sinhVienService.deleteSinhVien(maSV)) {\r\n            Toast.makeText(this, Constants.MSG_DELETE_SUCCESS, Toast.LENGTH_SHORT).show();\r\n            loadData();\r\n        } else {\r\n            Toast.makeText(this, Constants.MSG_DELETE_FAILED, Toast.LENGTH_SHORT).show();\r\n        }\r\n    }\r\n\r\n    @Override\r\n    protected void onResume() {\r\n        super.onResume();\r\n        loadData();\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java b/app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java
+--- a/app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java	(revision b516ab99ae1f7b3d3c907af58e015105b184e748)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java	(date 1765956369964)
+@@ -1,232 +1,150 @@
+ package com.teamforone.quanlysinhvien.ui;
+ 
+-import android.content.DialogInterface;
+ import android.content.Intent;
+ import android.os.Bundle;
+-import android.text.Editable;
+-import android.text.TextWatcher;
+-import android.view.View;
+-import android.widget.AdapterView;
+-import android.widget.ArrayAdapter;
+-import android.widget.Button;
+-import android.widget.EditText;
+-import android.widget.Spinner;
+ import android.widget.TextView;
+ import android.widget.Toast;
++import androidx.activity.OnBackPressedCallback;
+ import androidx.appcompat.app.AlertDialog;
+-import androidx.appcompat.app.AppCompatActivity;
+-import androidx.appcompat.widget.Toolbar;
+-import androidx.recyclerview.widget.LinearLayoutManager;
+-import androidx.recyclerview.widget.RecyclerView;
+-import com.google.android.material.floatingactionbutton.FloatingActionButton;
++import androidx.appcompat.app. AppCompatActivity;
++import androidx.cardview.widget.CardView;
++
+ import com.teamforone.quanlysinhvien.R;
+-import com.teamforone.quanlysinhvien.domain.model.SinhVien;
+-import com.teamforone.quanlysinhvien.service.SinhVienService;
+-import com.teamforone.quanlysinhvien.util.AppLogger;
+-import com.teamforone.quanlysinhvien.util.Constants;
+-
+-import java.util.ArrayList;
+-import java.util.List;
++import com.teamforone.quanlysinhvien.ui.QuanLySinhVien;
+ 
+-public class MainActivity extends AppCompatActivity implements SinhVienAdapter.OnItemClickListener{
++public class MainActivity extends AppCompatActivity {
+ 
+-    private RecyclerView recyclerView;
+-    private SinhVienAdapter adapter;
+-    private SinhVienService sinhVienService;
+-    private List<SinhVien> sinhVienList;
+-
+-    private EditText etSearch;
+-    private Spinner spinnerLop;
+-    private TextView tvEmpty;
+-    private Button btnSearch, btnResetFilter;
+-    private FloatingActionButton fabAdd;
+-
+-    private String currentFilter = Constants.FILTER_ALL;
++    private CardView cardStudentManagement, cardAttendance, cardClassManagement;
++    private CardView cardSubjectManagement, cardTeacherManagement, cardAccountManagement;
++    private CardView cardStatistics, cardLogout;
++    private TextView tvWelcome;
+ 
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+-        setContentView(R.layout.quanlysinhvien);
++        setContentView(R.layout.activity_main);
+ 
+-        AppLogger.d(Constants.LOG_TAG_UI, "MainActivity created");
+-
+-        setupToolbar();
++        // Khởi tạo views
+         initViews();
+-        initService();
+-        setupRecyclerView();
+-        setupSpinner();
+-        setupListeners();
+-        loadData();
+-    }
++
++        // Lấy thông tin người dùng (nếu có từ Intent hoặc SharedPreferences)
++        String username = getIntent().getStringExtra("username");
++        if (username != null && !username.isEmpty()) {
++            tvWelcome.setText("Xin chào, " + username);
++        }
++
++        // Thiết lập sự kiện click cho các card
++        setupClickListeners();
++        getOnBackPressedDispatcher().addCallback(this,
++                new OnBackPressedCallback(true) {
++                    @Override
++                    public void handleOnBackPressed() {
++                        showExitDialog();
++                    }
++                });
++
+ 
+-    private void setupToolbar() {
+-        Toolbar toolbar = findViewById(R.id.toolbar);
+-        setSupportActionBar(toolbar);
++
++
+     }
+ 
+     private void initViews() {
+-        recyclerView = findViewById(R.id.recyclerView);
+-        etSearch = findViewById(R.id.etSearch);
+-        spinnerLop = findViewById(R.id.spinnerLop);
+-        tvEmpty = findViewById(R.id.tvEmpty);
+-        btnSearch = findViewById(R.id.btnSearch);
+-        btnResetFilter = findViewById(R.id.btnResetFilter);
+-        fabAdd = findViewById(R.id.fabAdd);
+-    }
+-
+-    private void initService() {
+-        sinhVienService = SinhVienService.getInstance(this);
+-    }
+-
+-    private void setupRecyclerView() {
+-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+-        sinhVienList = new ArrayList<>();
+-        adapter = new SinhVienAdapter(sinhVienList, this);
+-        recyclerView.setAdapter(adapter);
++        tvWelcome = findViewById(R. id.tvWelcome);
++        cardStudentManagement = findViewById(R.id.cardStudentManagement);
++        cardAttendance = findViewById(R.id. cardAttendance);
++        cardClassManagement = findViewById(R. id.cardClassManagement);
++        cardSubjectManagement = findViewById(R.id.cardSubjectManagement);
++        cardTeacherManagement = findViewById(R. id.cardTeacherManagement);
++        cardAccountManagement = findViewById(R.id.cardAccountManagement);
++        cardStatistics = findViewById(R.id.cardStatistics);
++        cardLogout = findViewById(R.id.cardLogout);
+     }
+ 
+-    private void setupSpinner() {
+-        List<String> lopList = sinhVienService.getAllLopNames();
+-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(
+-                this,
+-                android.R.layout.simple_spinner_item,
+-                lopList
+-        );
+-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+-        spinnerLop.setAdapter(spinnerAdapter);
+-    }
+-
+-    private void setupListeners() {
+-        fabAdd.setOnClickListener(v -> {
+-            Intent intent = new Intent(MainActivity.this, AddSinhVienActivity.class);
++    private void setupClickListeners() {
++        // Quản lý sinh viên
++        cardStudentManagement.setOnClickListener(v -> {
++            Intent intent = new Intent(MainActivity.this, QuanLySinhVien.class);
+             startActivity(intent);
+         });
+ 
+-        btnSearch.setOnClickListener(v -> performSearch());
+-
+-        etSearch.addTextChangedListener(new TextWatcher() {
+-            @Override
+-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+-
+-            @Override
+-            public void onTextChanged(CharSequence s, int start, int before, int count) {
+-                if (s.toString().isEmpty()) {
+-                    loadData();
+-                }
+-            }
+-
+-            @Override
+-            public void afterTextChanged(Editable s) {}
++//        // Điểm danh
++//        cardAttendance. setOnClickListener(v -> {
++//            Intent intent = new Intent(MainActivity.this, AttendanceActivity.class);
++//            startActivity(intent);
++//        });
++//
++//        // 1. Quản lý SINH VIÊN
++//        cardStudentManagement.setOnClickListener(v -> {
++//            Intent intent = new Intent(MainActivity.this, QuanLySinhVien.class);
++//            startActivity(intent);
++//        });
++//
++        // 2. Quản lý LỚP HỌC (Đã mở comment và trỏ đúng Activity)
++        cardClassManagement.setOnClickListener(v -> {
++            Intent intent = new Intent(MainActivity.this, QuanLyLopActivity.class);
++            startActivity(intent);
+         });
+ 
+-        spinnerLop.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+-            @Override
+-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+-                String selected = parent.getItemAtPosition(position).toString();
+-                currentFilter = selected;
+-                applyFilter();
+-            }
+-
+-            @Override
+-            public void onNothingSelected(AdapterView<?> parent) {}
++        // 3. Quản lý MÔN HỌC (Đã mở comment và trỏ đúng Activity)
++        cardSubjectManagement.setOnClickListener(v -> {
++            Intent intent = new Intent(MainActivity.this, QuanLyMonHocActivity.class);
++            startActivity(intent);
+         });
+ 
+-        btnResetFilter.setOnClickListener(v -> resetFilters());
+-    }
+-
+-    private void loadData() {
+-        AppLogger.d(Constants.LOG_TAG_UI, "Loading all data");
+-        sinhVienList = sinhVienService.getAllSinhVien();
+-        updateUI();
+-    }
+-
+-    private void performSearch() {
+-        String keyword = etSearch.getText().toString().trim();
+-        if (!keyword.isEmpty()) {
+-            AppLogger.d(Constants.LOG_TAG_UI, "Performing search: " + keyword);
+-            sinhVienList = sinhVienService.searchSinhVien(keyword);
+-            updateUI();
+-        } else {
+-            Toast.makeText(this, "Vui lòng nhập từ khóa tìm kiếm", Toast.LENGTH_SHORT).show();
+-        }
+-    }
+-
+-    private void applyFilter() {
+-        if (currentFilter.equals(Constants.FILTER_ALL)) {
+-            loadData();
+-        } else {
+-            String maLop = currentFilter.split(" - ")[0];
+-            AppLogger.d(Constants.LOG_TAG_UI, "Applying filter: " + maLop);
+-            sinhVienList = sinhVienService.filterByLop(maLop);
+-            updateUI();
+-        }
+-    }
+-
+-    private void resetFilters() {
+-        spinnerLop.setSelection(0);
+-        etSearch.setText("");
+-        loadData();
+-        Toast.makeText(this, "Đã reset bộ lọc", Toast.LENGTH_SHORT).show();
+-    }
+-
+-    private void updateUI() {
+-        if (sinhVienList.isEmpty()) {
+-            recyclerView.setVisibility(View.GONE);
+-            tvEmpty.setVisibility(View.VISIBLE);
+-        } else {
+-            recyclerView.setVisibility(View.VISIBLE);
+-            tvEmpty.setVisibility(View.GONE);
+-        }
+-        adapter.updateList(sinhVienList);
+-        AppLogger.d(Constants.LOG_TAG_UI, "UI updated with " + sinhVienList.size() + " items");
+-    }
+-
+-    @Override
+-    public void onEditClick(SinhVien sinhVien) {
+-        AppLogger.d(Constants.LOG_TAG_UI, "Edit clicked for: " + sinhVien.getMaSV());
+-        Intent intent = new Intent(MainActivity.this, EditSinhVienActivity.class);
+-        intent.putExtra(Constants.EXTRA_MA_SV, sinhVien.getMaSV());
+-        intent.putExtra(Constants.EXTRA_HO_TEN, sinhVien.getHoTen());
+-        intent.putExtra(Constants.EXTRA_NGAY_SINH, sinhVien.getNgaySinh());
+-        intent.putExtra(Constants.EXTRA_GIOI_TINH, sinhVien.getGioiTinh());
+-        intent.putExtra(Constants.EXTRA_DIA_CHI, sinhVien.getDiaChi());
+-        intent.putExtra(Constants.EXTRA_MA_LOP, sinhVien.getMaLop());
+-        startActivity(intent);
++        // 4. Quản lý GIẢNG VIÊN (Đã mở comment và trỏ đúng Activity)
++        cardTeacherManagement.setOnClickListener(v -> {
++            Intent intent = new Intent(MainActivity.this, QuanLyGiangVienActivity.class);
++            startActivity(intent);
++        });
++
++//        // Quản lý tài khoản - phân quyền
++//        cardAccountManagement.setOnClickListener(v -> {
++//            Intent intent = new Intent(MainActivity.this, AccountManagementActivity.class);
++//            startActivity(intent);
++//        });
++//
++//        // Thống kê báo cáo
++//        cardStatistics.setOnClickListener(v -> {
++//            Intent intent = new Intent(MainActivity.this, StatisticsActivity.class);
++//            startActivity(intent);
++//        });
++
++        // Đăng xuất
++        cardLogout.setOnClickListener(v -> {
++            // Hiển thị dialog xác nhận đăng xuất
++            showLogoutDialog();
++        });
+     }
+ 
+-    @Override
+-    public void onDeleteClick(SinhVien sinhVien) {
+-        showDeleteConfirmDialog(sinhVien);
++    private void showLogoutDialog() {
++        new androidx.appcompat.app.AlertDialog.Builder(this)
++                .setTitle("Đăng xuất")
++                .setMessage("Bạn có chắc chắn muốn đăng xuất? ")
++                .setPositiveButton("Có", (dialog, which) -> {
++                    // Xóa thông tin đăng nhập (SharedPreferences)
++                    // SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
++                    // prefs.edit().clear().apply();
++
++                    Toast.makeText(MainActivity.this, "Đã đăng xuất", Toast.LENGTH_SHORT).show();
++
++//                    // Chuyển về màn hình đăng nhập
++//                    Intent intent = new Intent(MainActivity.this, LoginActivity.class);
++//                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent. FLAG_ACTIVITY_CLEAR_TASK);
++//                    startActivity(intent);
++//                    finish();
++                })
++                .setNegativeButton("Không", null)
++                .show();
+     }
+ 
+-    private void showDeleteConfirmDialog(SinhVien sinhVien) {
++    private void showExitDialog() {
+         new AlertDialog.Builder(this)
+-                .setTitle("Xác nhận xóa")
+-                .setMessage("Bạn có chắc chắn muốn xóa sinh viên " + sinhVien.getHoTen() +
+-                        " (Mã: " + sinhVien.getMaSV() + ") không?")
+-                .setPositiveButton("Xóa", new DialogInterface.OnClickListener() {
+-                    @Override
+-                    public void onClick(DialogInterface dialog, int which) {
+-                        deleteSinhVien(sinhVien.getMaSV());
+-                    }
++                .setTitle("Thoát ứng dụng")
++                .setMessage("Bạn có muốn thoát ứng dụng?")
++                .setPositiveButton("Có", (dialog, which) -> {
++                    finishAffinity(); // Đóng toàn bộ Activity
+                 })
+-                .setNegativeButton("Hủy", null)
+-                .setIcon(android.R.drawable.ic_dialog_alert)
++                .setNegativeButton("Không", null)
+                 .show();
+     }
+-
+-    private void deleteSinhVien(String maSV) {
+-        if (sinhVienService.deleteSinhVien(maSV)) {
+-            Toast.makeText(this, Constants.MSG_DELETE_SUCCESS, Toast.LENGTH_SHORT).show();
+-            loadData();
+-        } else {
+-            Toast.makeText(this, Constants.MSG_DELETE_FAILED, Toast.LENGTH_SHORT).show();
+-        }
+-    }
+-
+-    @Override
+-    protected void onResume() {
+-        super.onResume();
+-        loadData();
+-    }
+ }
+\ No newline at end of file
+Index: app/src/main/res/values/strings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><resources>\r\n    <string name=\"app_name\">Quản Lý SinhVien</string>\r\n</resources>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+--- a/app/src/main/res/values/strings.xml	(revision b516ab99ae1f7b3d3c907af58e015105b184e748)
++++ b/app/src/main/res/values/strings.xml	(date 1765954124471)
+@@ -1,3 +1,12 @@
+ <resources>
+-    <string name="app_name">Quản Lý SinhVien</string>
++    <string name="app_name">Quản Lý Sinh Viên</string>
++    <string name="app_logo">Logo ứng dụng</string>
++    <string name="student_management">Quản lý sinh viên</string>
++    <string name="attendance">Điểm danh</string>
++    <string name="class_management">Quản lý lớp</string>
++    <string name="subject_management">Quản lý môn học</string>
++    <string name="teacher_management">Quản lý giảng viên</string>
++    <string name="account_management">Quản lý tài khoản</string>
++    <string name="statistics">Thống kê báo cáo</string>
++    <string name="logout">Đăng xuất</string>
+ </resources>
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.teamforone.quanlysinhvien.data.db;\r\n\r\nimport android.content.Context;\r\nimport android.database.sqlite.SQLiteDatabase;\r\nimport android.database.sqlite.SQLiteOpenHelper;\r\n\r\nimport com.teamforone.quanlysinhvien.util.AppLogger;\r\nimport com.teamforone.quanlysinhvien.util.Constants;\r\n\r\nimport java.io.File;\r\nimport java.io.FileOutputStream;\r\nimport java.io.InputStream;\r\nimport java.io.OutputStream;\r\n\r\npublic class DatabaseHelper extends SQLiteOpenHelper {\r\n\r\n    private final Context context;\r\n    private static DatabaseHelper instance;\r\n\r\n    public DatabaseHelper(Context context) {\r\n        super(context, Constants.DATABASE_NAME, null, Constants.DATABASE_VERSION);\r\n        this.context = context.getApplicationContext();\r\n    }\r\n\r\n    /**\r\n     * Copy DB từ assets nếu chưa tồn tại\r\n     */\r\n    public void prepareDatabase() {\r\n        File dbFile = context.getDatabasePath(DatabaseProvider.getDbName());\r\n        if (dbFile.exists()) return;\r\n\r\n        dbFile.getParentFile().mkdirs();\r\n\r\n        try (\r\n                InputStream is = context.getAssets()\r\n                        .open(DatabaseProvider.getAssetDbPath());\r\n                OutputStream os = new FileOutputStream(dbFile)\r\n        ) {\r\n            byte[] buffer = new byte[1024];\r\n            int length;\r\n            while ((length = is.read(buffer)) > 0) {\r\n                os.write(buffer, 0, length);\r\n            }\r\n            os.flush();\r\n        } catch (Exception e) {\r\n            throw new RuntimeException(\"Copy database failed\", e);\r\n        }\r\n    }\r\n\r\n    /**\r\n     * Mở DB (đảm bảo DB đã được copy)\r\n     */\r\n    public SQLiteDatabase openDatabase() {\r\n        prepareDatabase();\r\n        return SQLiteDatabase.openDatabase(\r\n                context.getDatabasePath(DatabaseProvider.getDbName()).getPath(),\r\n                null,\r\n                SQLiteDatabase.OPEN_READWRITE\r\n        );\r\n    }\r\n\r\n    public static synchronized DatabaseHelper getInstance(Context context) {\r\n        if (instance == null) {\r\n            instance = new DatabaseHelper(context.getApplicationContext());\r\n        }\r\n        return instance;\r\n    }\r\n\r\n    @Override\r\n    public void onCreate(SQLiteDatabase db) {\r\n        AppLogger.d(Constants.LOG_TAG_DB, \"Creating database tables...\");\r\n\r\n        db.execSQL(\"PRAGMA foreign_keys = ON\");\r\n\r\n        // Create LOP table\r\n        String createLopTable = \"CREATE TABLE \" + Constants.TABLE_LOP + \" (\" +\r\n                Constants.COL_MA_LOP + \" TEXT PRIMARY KEY,\" +\r\n                Constants.COL_TEN_LOP + \" TEXT NOT NULL,\" +\r\n                Constants.COL_KHOA + \" TEXT NOT NULL)\";\r\n        db.execSQL(createLopTable);\r\n        AppLogger.d(Constants.LOG_TAG_DB, \"Created LOP table\");\r\n\r\n        // Create SINHVIEN table\r\n        String createSinhVienTable = \"CREATE TABLE \" + Constants.TABLE_SINHVIEN + \" (\" +\r\n                Constants.COL_MA_SV + \" TEXT PRIMARY KEY,\" +\r\n                Constants.COL_HO_TEN + \" TEXT NOT NULL,\" +\r\n                Constants.COL_NGAY_SINH + \" TEXT,\" +\r\n                Constants.COL_GIOI_TINH + \" TEXT,\" +\r\n                Constants.COL_DIA_CHI + \" TEXT,\" +\r\n                Constants.COL_MA_LOP + \" TEXT,\" +\r\n                \"FOREIGN KEY (\" + Constants.COL_MA_LOP + \") REFERENCES \" +\r\n                Constants.TABLE_LOP + \"(\" + Constants.COL_MA_LOP + \"))\";\r\n        db.execSQL(createSinhVienTable);\r\n        AppLogger.d(Constants.LOG_TAG_DB, \"Created SINHVIEN table\");\r\n\r\n        // Insert sample data\r\n        insertSampleData(db);\r\n    }\r\n\r\n    private void insertSampleData(SQLiteDatabase db) {\r\n        AppLogger.d(Constants.LOG_TAG_DB, \"Inserting sample data...\");\r\n\r\n        db.execSQL(\"INSERT INTO \" + Constants.TABLE_LOP + \" VALUES ('CNTT01', 'Công nghệ thông tin 1', 'CNTT')\");\r\n        db.execSQL(\"INSERT INTO \" + Constants.TABLE_LOP + \" VALUES ('CNTT02', 'Công nghệ thông tin 2', 'CNTT')\");\r\n        db.execSQL(\"INSERT INTO \" + Constants.TABLE_LOP + \" VALUES ('KTPM01', 'Kỹ thuật phần mềm 1', 'CNTT')\");\r\n        db.execSQL(\"INSERT INTO \" + Constants.TABLE_LOP + \" VALUES ('KHMT01', 'Khoa học máy tính 1', 'CNTT')\");\r\n\r\n        AppLogger.d(Constants.LOG_TAG_DB, \"Sample data inserted successfully\");\r\n    }\r\n\r\n    @Override\r\n    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {\r\n        AppLogger.d(Constants.LOG_TAG_DB, \"Upgrading database from version \" + oldVersion + \" to \" + newVersion);\r\n\r\n        db.execSQL(\"DROP TABLE IF EXISTS \" + Constants.TABLE_SINHVIEN);\r\n        db.execSQL(\"DROP TABLE IF EXISTS \" + Constants.TABLE_LOP);\r\n        onCreate(db);\r\n    }\r\n\r\n    @Override\r\n    public void onOpen(SQLiteDatabase db) {\r\n        super.onOpen(db);\r\n        db.execSQL(\"PRAGMA foreign_keys = ON\");\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java b/app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java
+--- a/app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java	(revision b516ab99ae1f7b3d3c907af58e015105b184e748)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java	(date 1765955366693)
+@@ -24,6 +24,8 @@
+ 
+     /**
+      * Copy DB từ assets nếu chưa tồn tại
++     * Lưu ý: Nếu bạn muốn code tự tạo bảng trong onCreate thì hàm này chỉ mang tính thủ tục
++     * để tránh lỗi file not found khi gọi getReadableDatabase() lần đầu.
+      */
+     public void prepareDatabase() {
+         File dbFile = context.getDatabasePath(DatabaseProvider.getDbName());
+@@ -31,33 +33,33 @@
+ 
+         dbFile.getParentFile().mkdirs();
+ 
+-        try (
+-                InputStream is = context.getAssets()
+-                        .open(DatabaseProvider.getAssetDbPath());
+-                OutputStream os = new FileOutputStream(dbFile)
+-        ) {
+-            byte[] buffer = new byte[1024];
+-            int length;
+-            while ((length = is.read(buffer)) > 0) {
+-                os.write(buffer, 0, length);
+-            }
+-            os.flush();
++        // Nếu file assets có tồn tại thì copy, nếu không thì thôi (để onCreate tự tạo)
++        try {
++            // Kiểm tra xem trong assets có file không đã
++            String[] assets = context.getAssets().list("");
++            boolean hasDbFile = false;
++            for(String f : assets) {
++                if(f.equals(DatabaseProvider.getAssetDbPath())) {
++                    hasDbFile = true; break;
++                }
++            }
++
++            if (hasDbFile) {
++                try (InputStream is = context.getAssets().open(DatabaseProvider.getAssetDbPath());
++                     OutputStream os = new FileOutputStream(dbFile)) {
++                    byte[] buffer = new byte[1024];
++                    int length;
++                    while ((length = is.read(buffer)) > 0) {
++                        os.write(buffer, 0, length);
++                    }
++                    os.flush();
++                }
++            }
+         } catch (Exception e) {
+-            throw new RuntimeException("Copy database failed", e);
++            // Chỉ log warning, không throw RuntimeException để App vẫn chạy tiếp vào onCreate
++            AppLogger.e(Constants.LOG_TAG_DB, "Copy database failed or file not found in assets. Creating new DB.", e);
+         }
+     }
+-
+-    /**
+-     * Mở DB (đảm bảo DB đã được copy)
+-     */
+-    public SQLiteDatabase openDatabase() {
+-        prepareDatabase();
+-        return SQLiteDatabase.openDatabase(
+-                context.getDatabasePath(DatabaseProvider.getDbName()).getPath(),
+-                null,
+-                SQLiteDatabase.OPEN_READWRITE
+-        );
+-    }
+ 
+     public static synchronized DatabaseHelper getInstance(Context context) {
+         if (instance == null) {
+@@ -72,7 +74,7 @@
+ 
+         db.execSQL("PRAGMA foreign_keys = ON");
+ 
+-        // Create LOP table
++        // 1. Tạo bảng LOP
+         String createLopTable = "CREATE TABLE " + Constants.TABLE_LOP + " (" +
+                 Constants.COL_MA_LOP + " TEXT PRIMARY KEY," +
+                 Constants.COL_TEN_LOP + " TEXT NOT NULL," +
+@@ -80,7 +82,7 @@
+         db.execSQL(createLopTable);
+         AppLogger.d(Constants.LOG_TAG_DB, "Created LOP table");
+ 
+-        // Create SINHVIEN table
++        // 2. Tạo bảng SINHVIEN
+         String createSinhVienTable = "CREATE TABLE " + Constants.TABLE_SINHVIEN + " (" +
+                 Constants.COL_MA_SV + " TEXT PRIMARY KEY," +
+                 Constants.COL_HO_TEN + " TEXT NOT NULL," +
+@@ -93,18 +95,56 @@
+         db.execSQL(createSinhVienTable);
+         AppLogger.d(Constants.LOG_TAG_DB, "Created SINHVIEN table");
+ 
+-        // Insert sample data
++        // 3. Tạo bảng GIANGVIEN (MỚI)
++        String createGiangVienTable = "CREATE TABLE " + Constants.TABLE_GIANGVIEN + " (" +
++                Constants.COL_MA_GV + " TEXT PRIMARY KEY, " +
++                Constants.COL_HO_TEN_GV + " TEXT NOT NULL, " +
++                Constants.COL_EMAIL_GV + " TEXT, " +
++                Constants.COL_SDT_GV + " TEXT)";
++        db.execSQL(createGiangVienTable);
++        AppLogger.d(Constants.LOG_TAG_DB, "Created GIANGVIEN table");
++
++        // 4. Tạo bảng MONHOC (MỚI)
++        String createMonHocTable = "CREATE TABLE " + Constants.TABLE_MONHOC + " (" +
++                Constants.COL_MA_MH + " TEXT PRIMARY KEY, " +
++                Constants.COL_TEN_MH + " TEXT NOT NULL, " +
++                Constants.COL_SO_TIN_CHI + " INTEGER)";
++        db.execSQL(createMonHocTable);
++        AppLogger.d(Constants.LOG_TAG_DB, "Created MONHOC table");
++
++        // 5. Tạo bảng PHANCONG (MỚI - Để kết nối Giảng viên & Môn học & Lớp)
++        String createPhanCongTable = "CREATE TABLE " + Constants.TABLE_PHANCONG + " (" +
++                Constants.COL_ID_PC + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
++                Constants.COL_MA_GV + " TEXT, " +
++                Constants.COL_MA_MH + " TEXT, " +
++                Constants.COL_MA_LOP + " TEXT, " +
++                "FOREIGN KEY (" + Constants.COL_MA_GV + ") REFERENCES " + Constants.TABLE_GIANGVIEN + "(" + Constants.COL_MA_GV + "), " +
++                "FOREIGN KEY (" + Constants.COL_MA_MH + ") REFERENCES " + Constants.TABLE_MONHOC + "(" + Constants.COL_MA_MH + "), " +
++                "FOREIGN KEY (" + Constants.COL_MA_LOP + ") REFERENCES " + Constants.TABLE_LOP + "(" + Constants.COL_MA_LOP + "))";
++        db.execSQL(createPhanCongTable);
++        AppLogger.d(Constants.LOG_TAG_DB, "Created PHANCONG table");
++
++        // Insert dữ liệu mẫu
+         insertSampleData(db);
+     }
+ 
+     private void insertSampleData(SQLiteDatabase db) {
+         AppLogger.d(Constants.LOG_TAG_DB, "Inserting sample data...");
+ 
++        // Mẫu Lớp
+         db.execSQL("INSERT INTO " + Constants.TABLE_LOP + " VALUES ('CNTT01', 'Công nghệ thông tin 1', 'CNTT')");
+         db.execSQL("INSERT INTO " + Constants.TABLE_LOP + " VALUES ('CNTT02', 'Công nghệ thông tin 2', 'CNTT')");
+         db.execSQL("INSERT INTO " + Constants.TABLE_LOP + " VALUES ('KTPM01', 'Kỹ thuật phần mềm 1', 'CNTT')");
+         db.execSQL("INSERT INTO " + Constants.TABLE_LOP + " VALUES ('KHMT01', 'Khoa học máy tính 1', 'CNTT')");
+ 
++        // Mẫu Giảng Viên
++        db.execSQL("INSERT INTO " + Constants.TABLE_GIANGVIEN + " VALUES ('GV01', 'Nguyễn Văn A', 'a@gmail.com', '0912345678')");
++        db.execSQL("INSERT INTO " + Constants.TABLE_GIANGVIEN + " VALUES ('GV02', 'Trần Thị B', 'b@gmail.com', '0987654321')");
++
++        // Mẫu Môn Học
++        db.execSQL("INSERT INTO " + Constants.TABLE_MONHOC + " VALUES ('MH01', 'Lập trình Android', 3)");
++        db.execSQL("INSERT INTO " + Constants.TABLE_MONHOC + " VALUES ('MH02', 'Cấu trúc dữ liệu', 3)");
++
+         AppLogger.d(Constants.LOG_TAG_DB, "Sample data inserted successfully");
+     }
+ 
+@@ -112,6 +152,10 @@
+     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+         AppLogger.d(Constants.LOG_TAG_DB, "Upgrading database from version " + oldVersion + " to " + newVersion);
+ 
++        // Xóa bảng cũ nếu update
++        db.execSQL("DROP TABLE IF EXISTS " + Constants.TABLE_PHANCONG);
++        db.execSQL("DROP TABLE IF EXISTS " + Constants.TABLE_MONHOC);
++        db.execSQL("DROP TABLE IF EXISTS " + Constants.TABLE_GIANGVIEN);
+         db.execSQL("DROP TABLE IF EXISTS " + Constants.TABLE_SINHVIEN);
+         db.execSQL("DROP TABLE IF EXISTS " + Constants.TABLE_LOP);
+         onCreate(db);
+@@ -122,4 +166,4 @@
+         super.onOpen(db);
+         db.execSQL("PRAGMA foreign_keys = ON");
+     }
+-}
++}
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/util/Constants.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.teamforone.quanlysinhvien.util;\r\n\r\npublic class Constants {\r\n    // Database\r\n    public static final String DATABASE_NAME = \"QLSV.db\";\r\n    public static final int DATABASE_VERSION = 1;\r\n\r\n    // Table Names\r\n    public static final String TABLE_LOP = \"LOP\";\r\n    public static final String TABLE_SINHVIEN = \"SINHVIEN\";\r\n\r\n    // LOP Table Columns\r\n    public static final String COL_MA_LOP = \"maLop\";\r\n    public static final String COL_TEN_LOP = \"tenLop\";\r\n    public static final String COL_KHOA = \"khoa\";\r\n\r\n    // SINHVIEN Table Columns\r\n    public static final String COL_MA_SV = \"maSV\";\r\n    public static final String COL_HO_TEN = \"hoTen\";\r\n    public static final String COL_NGAY_SINH = \"ngaySinh\";\r\n    public static final String COL_GIOI_TINH = \"gioiTinh\";\r\n    public static final String COL_DIA_CHI = \"diaChi\";\r\n\r\n    // Gender\r\n    public static final String GENDER_MALE = \"Nam\";\r\n    public static final String GENDER_FEMALE = \"Nữ\";\r\n\r\n    // Filter Options\r\n    public static final String FILTER_ALL = \"Tất cả\";\r\n\r\n    // Intent Extras\r\n    public static final String EXTRA_MA_SV = \"maSV\";\r\n    public static final String EXTRA_HO_TEN = \"hoTen\";\r\n    public static final String EXTRA_NGAY_SINH = \"ngaySinh\";\r\n    public static final String EXTRA_GIOI_TINH = \"gioiTinh\";\r\n    public static final String EXTRA_DIA_CHI = \"diaChi\";\r\n    public static final String EXTRA_MA_LOP = \"maLop\";\r\n\r\n    // Messages\r\n    public static final String MSG_ADD_SUCCESS = \"Thêm sinh viên thành công!\";\r\n    public static final String MSG_ADD_FAILED = \"Thêm sinh viên thất bại!\";\r\n    public static final String MSG_UPDATE_SUCCESS = \"Cập nhật sinh viên thành công!\";\r\n    public static final String MSG_UPDATE_FAILED = \"Cập nhật sinh viên thất bại!\";\r\n    public static final String MSG_DELETE_SUCCESS = \"Xóa thành công!\";\r\n    public static final String MSG_DELETE_FAILED = \"Xóa thất bại!\";\r\n    public static final String MSG_EMPTY_FIELD = \"Vui lòng điền đầy đủ thông tin!\";\r\n    public static final String MSG_DUPLICATE_ID = \"Mã sinh viên đã tồn tại!\";\r\n    public static final String MSG_NO_DATA = \"Không có sinh viên nào\";\r\n\r\n    // Log Tags\r\n    public static final String LOG_TAG_DB = \"DatabaseHelper\";\r\n    public static final String LOG_TAG_DAO = \"SinhVienDAO\";\r\n    public static final String LOG_TAG_SERVICE = \"SinhVienService\";\r\n    public static final String LOG_TAG_UI = \"UI\";\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/util/Constants.java b/app/src/main/java/com/teamforone/quanlysinhvien/util/Constants.java
+--- a/app/src/main/java/com/teamforone/quanlysinhvien/util/Constants.java	(revision b516ab99ae1f7b3d3c907af58e015105b184e748)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/util/Constants.java	(date 1765954442214)
+@@ -5,22 +5,40 @@
+     public static final String DATABASE_NAME = "QLSV.db";
+     public static final int DATABASE_VERSION = 1;
+ 
+-    // Table Names
++    // --- TÊN BẢNG (TABLE NAMES) ---
+     public static final String TABLE_LOP = "LOP";
+     public static final String TABLE_SINHVIEN = "SINHVIEN";
++    // Mới thêm
++    public static final String TABLE_GIANGVIEN = "GIANGVIEN";
++    public static final String TABLE_MONHOC = "MONHOC";
++    public static final String TABLE_PHANCONG = "PHANCONG";
+ 
+-    // LOP Table Columns
++    // --- CỘT BẢNG LỚP (LOP) ---
+     public static final String COL_MA_LOP = "maLop";
+     public static final String COL_TEN_LOP = "tenLop";
+     public static final String COL_KHOA = "khoa";
+ 
+-    // SINHVIEN Table Columns
++    // --- CỘT BẢNG SINH VIÊN (SINHVIEN) ---
+     public static final String COL_MA_SV = "maSV";
+     public static final String COL_HO_TEN = "hoTen";
+     public static final String COL_NGAY_SINH = "ngaySinh";
+     public static final String COL_GIOI_TINH = "gioiTinh";
+     public static final String COL_DIA_CHI = "diaChi";
+ 
++    // --- CỘT BẢNG GIẢNG VIÊN (GIANGVIEN) - MỚI THÊM ---
++    public static final String COL_MA_GV = "maGV";
++    public static final String COL_HO_TEN_GV = "hoTen"; // Tên cột trong bảng GV
++    public static final String COL_SDT_GV = "sdt";
++    public static final String COL_EMAIL_GV = "email";
++
++    // --- CỘT BẢNG MÔN HỌC (MONHOC) - MỚI THÊM ---
++    public static final String COL_MA_MH = "maMH";
++    public static final String COL_TEN_MH = "tenMH";
++    public static final String COL_SO_TIN_CHI = "soTinChi";
++
++    // --- CỘT BẢNG PHÂN CÔNG (PHANCONG) - MỚI THÊM ---
++    public static final String COL_ID_PC = "id";
++
+     // Gender
+     public static final String GENDER_MALE = "Nam";
+     public static final String GENDER_FEMALE = "Nữ";
+@@ -37,19 +55,19 @@
+     public static final String EXTRA_MA_LOP = "maLop";
+ 
+     // Messages
+-    public static final String MSG_ADD_SUCCESS = "Thêm sinh viên thành công!";
+-    public static final String MSG_ADD_FAILED = "Thêm sinh viên thất bại!";
+-    public static final String MSG_UPDATE_SUCCESS = "Cập nhật sinh viên thành công!";
+-    public static final String MSG_UPDATE_FAILED = "Cập nhật sinh viên thất bại!";
++    public static final String MSG_ADD_SUCCESS = "Thêm thành công!";
++    public static final String MSG_ADD_FAILED = "Thêm thất bại!";
++    public static final String MSG_UPDATE_SUCCESS = "Cập nhật thành công!";
++    public static final String MSG_UPDATE_FAILED = "Cập nhật thất bại!";
+     public static final String MSG_DELETE_SUCCESS = "Xóa thành công!";
+     public static final String MSG_DELETE_FAILED = "Xóa thất bại!";
+     public static final String MSG_EMPTY_FIELD = "Vui lòng điền đầy đủ thông tin!";
+-    public static final String MSG_DUPLICATE_ID = "Mã sinh viên đã tồn tại!";
+-    public static final String MSG_NO_DATA = "Không có sinh viên nào";
++    public static final String MSG_DUPLICATE_ID = "Mã đã tồn tại!";
++    public static final String MSG_NO_DATA = "Không có dữ liệu";
+ 
+     // Log Tags
+     public static final String LOG_TAG_DB = "DatabaseHelper";
+     public static final String LOG_TAG_DAO = "SinhVienDAO";
+     public static final String LOG_TAG_SERVICE = "SinhVienService";
+     public static final String LOG_TAG_UI = "UI";
+-}
++}
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_account.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_account.xml b/app/src/main/res/drawable/ic_account.xml
+new file mode 100644
+--- /dev/null	(date 1765953516568)
++++ b/app/src/main/res/drawable/ic_account.xml	(date 1765953516568)
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?attr/colorControlNormal">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,5c1.66,0 3,1.34 3,3s-1.34,3 -3,3 -3,-1.34 -3,-3 1.34,-3 3,-3zM12,19.2c-2.5,0 -4.71,-1.28 -6,-3.22 0.03,-1.99 4,-3.08 6,-3.08 1.99,0 5.97,1.09 6,3.08 -1.29,1.94 -3.5,3.22 -6,3.22z"/>
++</vector>
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/domain/model/GiangVien.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/domain/model/GiangVien.java b/app/src/main/java/com/teamforone/quanlysinhvien/domain/model/GiangVien.java
+new file mode 100644
+--- /dev/null	(date 1765952831829)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/domain/model/GiangVien.java	(date 1765952831829)
+@@ -0,0 +1,34 @@
++package com.teamforone.quanlysinhvien.domain.model;
++
++import java.io.Serializable;
++
++public class GiangVien implements Serializable {
++    private String maGV;
++    private String hoTen;
++    private String sdt;
++    private String email;
++
++    public GiangVien() { }
++
++    public GiangVien(String maGV, String hoTen, String sdt, String email) {
++        this.maGV = maGV;
++        this.hoTen = hoTen;
++        this.sdt = sdt;
++        this.email = email;
++    }
++
++    // Getter & Setter
++    public String getMaGV() { return maGV; }
++    public void setMaGV(String maGV) { this.maGV = maGV; }
++    public String getHoTen() { return hoTen; }
++    public void setHoTen(String hoTen) { this.hoTen = hoTen; }
++    public String getSdt() { return sdt; }
++    public void setSdt(String sdt) { this.sdt = sdt; }
++    public String getEmail() { return email; }
++    public void setEmail(String email) { this.email = email; }
++
++    @Override
++    public String toString() {
++        return maGV + " - " + hoTen; // Để hiển thị lên Spinner/ListView
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyGiangVienActivity.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyGiangVienActivity.java b/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyGiangVienActivity.java
+new file mode 100644
+--- /dev/null	(date 1765956249833)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyGiangVienActivity.java	(date 1765956249833)
+@@ -0,0 +1,167 @@
++package com.teamforone.quanlysinhvien.ui;
++
++import android.os.Bundle;
++import android.text.TextUtils;
++import android.widget.ArrayAdapter;
++import android.widget.Button;
++import android.widget.EditText;
++import android.widget.ImageButton;
++import android.widget.ListView;
++import android.widget.Spinner;
++import android.widget.Toast;
++import androidx.appcompat.app.AlertDialog;
++import androidx.appcompat.app.AppCompatActivity;
++
++import com.teamforone.quanlysinhvien.R;
++import com.teamforone.quanlysinhvien.data.dao.QuanLyHocTapDAO;
++import com.teamforone.quanlysinhvien.domain.model.GiangVien;
++import com.teamforone.quanlysinhvien.service.GiangVienService; // Giữ lại nếu bạn dùng service, hoặc dùng thẳng DAO
++
++import java.util.List;
++
++public class QuanLyGiangVienActivity extends AppCompatActivity {
++
++    private EditText edtMa, edtTen, edtSdt;
++    private Spinner spnMonHoc, spnLop; // Khai báo 2 Spinner
++    private Button btnAdd, btnEdit, btnDel, btnPhanCong;
++    private ListView lvGiangVien;
++    private ImageButton btnBack;
++
++    // Dùng trực tiếp DAO cho tiện xử lý Spinner
++    private QuanLyHocTapDAO dao;
++    private GiangVienService service; // Để dùng logic thêm/sửa/xóa cũ
++
++    private ArrayAdapter<GiangVien> adapterGV;
++    private ArrayAdapter<String> adapterMon, adapterLop;
++    private List<GiangVien> listGV;
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        setContentView(R.layout.activity_quan_ly_giang_vien);
++
++        dao = new QuanLyHocTapDAO(this);
++        service = new GiangVienService(this);
++
++        initViews();
++        loadSpinners(); // Load dữ liệu Môn, Lớp vào Spinner
++        loadDataGV();   // Load danh sách GV
++        addEvents();
++    }
++
++    private void initViews() {
++        edtMa = findViewById(R.id.edtMaGV);
++        edtTen = findViewById(R.id.edtTenGV);
++        edtSdt = findViewById(R.id.edtSdtGV);
++
++        spnMonHoc = findViewById(R.id.spnMonHoc);
++        spnLop = findViewById(R.id.spnLop);
++
++        btnAdd = findViewById(R.id.btnAdd);
++        btnEdit = findViewById(R.id.btnUpdate);
++        btnDel = findViewById(R.id.btnDelete);
++        btnPhanCong = findViewById(R.id.btnPhanCong);
++
++        lvGiangVien = findViewById(R.id.lvGiangVien);
++        btnBack = findViewById(R.id.btnBackGV);
++    }
++
++    private void loadSpinners() {
++        // 1. Load Môn Học
++        List<String> listMon = dao.getAllMonHocNames(); // Trả về dạng "MH01 - Lập trình"
++        adapterMon = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, listMon);
++        spnMonHoc.setAdapter(adapterMon);
++
++        // 2. Load Lớp
++        List<String> listLop = dao.getAllLopNames(); // Trả về dạng "CNTT01 - Công nghệ..."
++        adapterLop = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, listLop);
++        spnLop.setAdapter(adapterLop);
++    }
++
++    private void loadDataGV() {
++        listGV = service.getAllGiangVien();
++        adapterGV = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, listGV);
++        lvGiangVien.setAdapter(adapterGV);
++    }
++
++    private void addEvents() {
++        btnBack.setOnClickListener(v -> finish());
++
++        // CLICK VÀO LIST VIEW
++        lvGiangVien.setOnItemClickListener((parent, view, position, id) -> {
++            GiangVien gv = listGV.get(position);
++            edtMa.setText(gv.getMaGV());
++            edtTen.setText(gv.getHoTen());
++            edtSdt.setText(gv.getSdt());
++            edtMa.setEnabled(false); // Khóa mã
++
++            // Hiển thị thông báo lịch dạy hiện tại của GV này
++            List<String> lichDay = dao.getLichDay(gv.getMaGV());
++            if (!lichDay.isEmpty()) {
++                String msg = "Lịch dạy hiện tại:\n- " + String.join("\n- ", lichDay);
++                Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
++            } else {
++                Toast.makeText(this, "Giảng viên này chưa được phân công môn nào.", Toast.LENGTH_SHORT).show();
++            }
++        });
++
++        // 1. THÊM GIẢNG VIÊN
++        btnAdd.setOnClickListener(v -> {
++            if (service.addGiangVien(edtMa.getText().toString(), edtTen.getText().toString(), edtSdt.getText().toString())) {
++                Toast.makeText(this, "Thêm GV thành công!", Toast.LENGTH_SHORT).show();
++                loadDataGV(); clearInput();
++            } else Toast.makeText(this, "Lỗi thêm GV!", Toast.LENGTH_SHORT).show();
++        });
++
++        // 2. SỬA GIẢNG VIÊN
++        // (Bạn tự thêm logic gọi service.updateGiangVien tương tự)
++
++        // 3. XÓA GIẢNG VIÊN
++        // (Bạn tự thêm logic gọi service.deleteGiangVien)
++
++        // 4. PHÂN CÔNG GIẢNG DẠY (QUAN TRỌNG)
++        btnPhanCong.setOnClickListener(v -> {
++            String maGV = edtMa.getText().toString().trim();
++
++            // Kiểm tra xem đã chọn GV chưa
++            if (TextUtils.isEmpty(maGV)) {
++                Toast.makeText(this, "Vui lòng chọn hoặc nhập Mã Giảng Viên trước!", Toast.LENGTH_SHORT).show();
++                return;
++            }
++
++            // Lấy dữ liệu từ Spinner
++            if (spnMonHoc.getSelectedItem() == null || spnLop.getSelectedItem() == null) {
++                Toast.makeText(this, "Dữ liệu Môn/Lớp trống. Hãy thêm Môn/Lớp trước.", Toast.LENGTH_SHORT).show();
++                return;
++            }
++
++            // Cắt chuỗi để lấy ID (Ví dụ: "MH01 - Java" -> lấy "MH01")
++            String monStr = spnMonHoc.getSelectedItem().toString();
++            String lopStr = spnLop.getSelectedItem().toString();
++
++            String maMH = monStr.split(" - ")[0];
++            String maLop = lopStr.split(" - ")[0];
++
++            // Gọi DAO lưu vào bảng PHANCONG
++            if (dao.insertPhanCong(maGV, maMH, maLop)) {
++                String msg = "Đã phân công GV " + maGV + " dạy môn " + maMH + " cho lớp " + maLop;
++                showDialog("Thành công", msg);
++            } else {
++                showDialog("Thất bại", "Có lỗi xảy ra hoặc GV này chưa được tạo trong hệ thống.");
++            }
++        });
++    }
++
++    private void showDialog(String title, String msg) {
++        new AlertDialog.Builder(this)
++                .setTitle(title)
++                .setMessage(msg)
++                .setPositiveButton("OK", null)
++                .show();
++    }
++
++    private void clearInput() {
++        edtMa.setText(""); edtTen.setText(""); edtSdt.setText("");
++        edtMa.setEnabled(true);
++    }
++}
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_attendance.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_attendance.xml b/app/src/main/res/drawable/ic_attendance.xml
+new file mode 100644
+--- /dev/null	(date 1765953548015)
++++ b/app/src/main/res/drawable/ic_attendance.xml	(date 1765953548015)
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?attr/colorControlNormal">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M9,16.17L4.83,12l-1.42,1.41L9,19 21,7l-1.41,-1.41z"/>
++</vector>
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/data/dao/QuanLyHocTapDAO.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/data/dao/QuanLyHocTapDAO.java b/app/src/main/java/com/teamforone/quanlysinhvien/data/dao/QuanLyHocTapDAO.java
+new file mode 100644
+--- /dev/null	(date 1765956220662)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/data/dao/QuanLyHocTapDAO.java	(date 1765956220662)
+@@ -0,0 +1,215 @@
++package com.teamforone.quanlysinhvien.data.dao;
++
++import android.content.ContentValues;
++import android.content.Context;
++import android.database.Cursor;
++import android.database.sqlite.SQLiteDatabase;
++import com.teamforone.quanlysinhvien.data.db.DatabaseHelper;
++import com.teamforone.quanlysinhvien.domain.model.GiangVien;
++import com.teamforone.quanlysinhvien.util.Constants;
++import java.util.ArrayList;
++import java.util.List;
++import com.teamforone.quanlysinhvien.domain.model.Lop;
++
++public class QuanLyHocTapDAO {
++    private DatabaseHelper dbHelper;
++
++    public QuanLyHocTapDAO(Context context) {
++        dbHelper = DatabaseHelper.getInstance(context);
++    }
++
++    // --- XỬ LÝ GIẢNG VIÊN ---
++    public long addGiangVien(GiangVien gv) {
++        SQLiteDatabase db = dbHelper.getWritableDatabase();
++        ContentValues values = new ContentValues();
++        values.put(Constants.COL_MA_GV, gv.getMaGV());
++        values.put(Constants.COL_HO_TEN_GV, gv.getHoTen());
++        values.put(Constants.COL_SDT_GV, gv.getSdt());
++        // values.put(Constants.COL_EMAIL_GV, gv.getEmail()); // Nếu có cột email
++        return db.insert(Constants.TABLE_GIANGVIEN, null, values);
++    }
++
++    public List<GiangVien> getAllGiangVien() {
++        List<GiangVien> list = new ArrayList<>();
++        SQLiteDatabase db = dbHelper.getReadableDatabase();
++        Cursor cursor = db.rawQuery("SELECT * FROM " + Constants.TABLE_GIANGVIEN, null);
++        if (cursor.moveToFirst()) {
++            do {
++                GiangVien gv = new GiangVien();
++                gv.setMaGV(cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_MA_GV)));
++                gv.setHoTen(cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_HO_TEN_GV)));
++                gv.setSdt(cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_SDT_GV)));
++                list.add(gv);
++            } while (cursor.moveToNext());
++        }
++        cursor.close();
++        return list;
++    }
++
++    public boolean insertMonHoc(String maMH, String tenMH, int tinChi) {
++        SQLiteDatabase db = dbHelper.getWritableDatabase();
++        ContentValues values = new ContentValues();
++        values.put(Constants.COL_MA_MH, maMH);
++        values.put(Constants.COL_TEN_MH, tenMH);
++        values.put(Constants.COL_SO_TIN_CHI, tinChi);
++        long result = db.insert(Constants.TABLE_MONHOC, null, values);
++        return result != -1;
++    }
++
++    public boolean updateMonHoc(String maMH, String tenMH, int tinChi) {
++        SQLiteDatabase db = dbHelper.getWritableDatabase();
++        ContentValues values = new ContentValues();
++        values.put(Constants.COL_TEN_MH, tenMH);
++        values.put(Constants.COL_SO_TIN_CHI, tinChi);
++        int rows = db.update(Constants.TABLE_MONHOC, values,
++                Constants.COL_MA_MH + "=?", new String[]{maMH});
++        return rows > 0;
++    }
++
++    public boolean deleteMonHoc(String maMH) {
++        SQLiteDatabase db = dbHelper.getWritableDatabase();
++        int rows = db.delete(Constants.TABLE_MONHOC,
++                Constants.COL_MA_MH + "=?", new String[]{maMH});
++        return rows > 0;
++    }
++
++    public List<String> getAllMonHocList() {
++        List<String> list = new ArrayList<>();
++        SQLiteDatabase db = dbHelper.getReadableDatabase();
++        Cursor cursor = null;
++        try {
++            cursor = db.rawQuery("SELECT * FROM " + Constants.TABLE_MONHOC, null);
++            if (cursor.moveToFirst()) {
++                do {
++                    String ma = cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_MA_MH));
++                    String ten = cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_TEN_MH));
++                    int tc = cursor.getInt(cursor.getColumnIndexOrThrow(Constants.COL_SO_TIN_CHI));
++                    list.add(ma + " - " + ten + " (" + tc + " tín chỉ)");
++                } while (cursor.moveToNext());
++            }
++        } catch (Exception e) {
++            e.printStackTrace();
++        } finally {
++            if (cursor != null) cursor.close();
++        }
++        return list;
++    }
++    // 1. Thêm Lớp
++    public boolean insertLop(Lop lop) {
++        SQLiteDatabase db = dbHelper.getWritableDatabase();
++        ContentValues values = new ContentValues();
++        values.put(Constants.COL_MA_LOP, lop.getMaLop());
++        values.put(Constants.COL_TEN_LOP, lop.getTenLop());
++        values.put(Constants.COL_KHOA, lop.getKhoa());
++        long result = db.insert(Constants.TABLE_LOP, null, values);
++        return result != -1;
++    }
++
++    // 2. Sửa Lớp (Theo Mã Lớp)
++    public boolean updateLop(Lop lop) {
++        SQLiteDatabase db = dbHelper.getWritableDatabase();
++        ContentValues values = new ContentValues();
++        values.put(Constants.COL_TEN_LOP, lop.getTenLop());
++        values.put(Constants.COL_KHOA, lop.getKhoa());
++
++        int rows = db.update(Constants.TABLE_LOP, values,
++                Constants.COL_MA_LOP + "=?", new String[]{lop.getMaLop()});
++        return rows > 0;
++    }
++
++    // 3. Xóa Lớp
++    public boolean deleteLop(String maLop) {
++        SQLiteDatabase db = dbHelper.getWritableDatabase();
++        int rows = db.delete(Constants.TABLE_LOP,
++                Constants.COL_MA_LOP + "=?", new String[]{maLop});
++        return rows > 0;
++    }
++
++    // 4. Lấy danh sách tất cả Lớp
++    public List<Lop> getAllLop() {
++        List<Lop> list = new ArrayList<>();
++        SQLiteDatabase db = dbHelper.getReadableDatabase();
++        Cursor cursor = null;
++        try {
++            cursor = db.rawQuery("SELECT * FROM " + Constants.TABLE_LOP, null);
++            if (cursor.moveToFirst()) {
++                do {
++                    Lop lop = new Lop();
++                    lop.setMaLop(cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_MA_LOP)));
++                    lop.setTenLop(cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_TEN_LOP)));
++                    lop.setKhoa(cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_KHOA)));
++                    list.add(lop);
++                } while (cursor.moveToNext());
++            }
++        } catch (Exception e) {
++            e.printStackTrace();
++        } finally {
++            if (cursor != null) cursor.close();
++        }
++        return list;
++    }
++    // 1. Lấy danh sách Môn Học (để đổ vào Spinner)
++    public List<String> getAllMonHocNames() {
++        List<String> list = new ArrayList<>();
++        SQLiteDatabase db = dbHelper.getReadableDatabase();
++        Cursor cursor = db.rawQuery("SELECT * FROM " + Constants.TABLE_MONHOC, null);
++        if (cursor.moveToFirst()) {
++            do {
++                String ma = cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_MA_MH));
++                String ten = cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_TEN_MH));
++                list.add(ma + " - " + ten);
++            } while (cursor.moveToNext());
++        }
++        cursor.close();
++        return list;
++    }
++
++    // 2. Lấy danh sách Lớp (để đổ vào Spinner)
++    public List<String> getAllLopNames() {
++        List<String> list = new ArrayList<>();
++        SQLiteDatabase db = dbHelper.getReadableDatabase();
++        Cursor cursor = db.rawQuery("SELECT * FROM " + Constants.TABLE_LOP, null);
++        if (cursor.moveToFirst()) {
++            do {
++                String ma = cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_MA_LOP));
++                String ten = cursor.getString(cursor.getColumnIndexOrThrow(Constants.COL_TEN_LOP));
++                list.add(ma + " - " + ten);
++            } while (cursor.moveToNext());
++        }
++        cursor.close();
++        return list;
++    }
++
++    // 3. Lưu Phân Công (Giảng viên dạy Môn gì cho Lớp nào)
++    public boolean insertPhanCong(String maGV, String maMH, String maLop) {
++        SQLiteDatabase db = dbHelper.getWritableDatabase();
++        ContentValues values = new ContentValues();
++        values.put(Constants.COL_MA_GV, maGV);
++        values.put(Constants.COL_MA_MH, maMH);
++        values.put(Constants.COL_MA_LOP, maLop);
++        long result = db.insert(Constants.TABLE_PHANCONG, null, values);
++        return result != -1;
++    }
++
++    // 4. Lấy lịch dạy của 1 Giảng viên (Để hiển thị)
++    public List<String> getLichDay(String maGV) {
++        List<String> list = new ArrayList<>();
++        SQLiteDatabase db = dbHelper.getReadableDatabase();
++        // JOIN 3 bảng để lấy tên hiển thị
++        String sql = "SELECT m.tenMH, l.tenLop FROM " + Constants.TABLE_PHANCONG + " p " +
++                "JOIN " + Constants.TABLE_MONHOC + " m ON p.maMH = m.maMH " +
++                "JOIN " + Constants.TABLE_LOP + " l ON p.maLop = l.maLop " +
++                "WHERE p.maGV = ?";
++        Cursor cursor = db.rawQuery(sql, new String[]{maGV});
++        if (cursor.moveToFirst()) {
++            do {
++                String mon = cursor.getString(0);
++                String lop = cursor.getString(1);
++                list.add("Dạy môn: " + mon + " - Lớp: " + lop);
++            } while (cursor.moveToNext());
++        }
++        cursor.close();
++        return list;
++    }
++
++}
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/domain/model/MonHoc.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/domain/model/MonHoc.java b/app/src/main/java/com/teamforone/quanlysinhvien/domain/model/MonHoc.java
+new file mode 100644
+--- /dev/null	(date 1765952850297)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/domain/model/MonHoc.java	(date 1765952850297)
+@@ -0,0 +1,22 @@
++package com.teamforone.quanlysinhvien.domain.model;
++
++public class MonHoc {
++    private String maMH;
++    private String tenMH;
++    private int soTinChi;
++
++    public MonHoc(String maMH, String tenMH, int soTinChi) {
++        this.maMH = maMH;
++        this.tenMH = tenMH;
++        this.soTinChi = soTinChi;
++    }
++
++    // Getter & Setter...
++    public String getMaMH() { return maMH; }
++    public String getTenMH() { return tenMH; }
++
++    @Override
++    public String toString() {
++        return tenMH;
++    }
++}
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_statistics.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_statistics.xml b/app/src/main/res/drawable/ic_statistics.xml
+new file mode 100644
+--- /dev/null	(date 1765953692101)
++++ b/app/src/main/res/drawable/ic_statistics.xml	(date 1765953692101)
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?attr/colorControlNormal">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M19,3L5,3c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2L21,5c0,-1.1 -0.9,-2 -2,-2zM9,17L7,17v-7h2v7zM13,17h-2L11,7h2v10zM17,17h-2v-4h2v4z"/>
++</vector>
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/domain/usecase/GetAllGiangVienUseCase.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/domain/usecase/GetAllGiangVienUseCase.java b/app/src/main/java/com/teamforone/quanlysinhvien/domain/usecase/GetAllGiangVienUseCase.java
+new file mode 100644
+--- /dev/null	(date 1765952923902)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/domain/usecase/GetAllGiangVienUseCase.java	(date 1765952923902)
+@@ -0,0 +1,17 @@
++package com.teamforone.quanlysinhvien.domain.usecase;
++
++import com.teamforone.quanlysinhvien.data.dao.QuanLyHocTapDAO;
++import com.teamforone.quanlysinhvien.domain.model.GiangVien;
++import java.util.List;
++
++public class GetAllGiangVienUseCase {
++    private final QuanLyHocTapDAO dao;
++
++    public GetAllGiangVienUseCase(QuanLyHocTapDAO dao) {
++        this.dao = dao;
++    }
++
++    public List<GiangVien> execute() {
++        return dao.getAllGiangVien();
++    }
++}
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_school.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_school.xml b/app/src/main/res/drawable/ic_school.xml
+new file mode 100644
+--- /dev/null	(date 1765953625423)
++++ b/app/src/main/res/drawable/ic_school.xml	(date 1765953625423)
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?attr/colorControlNormal">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M5,13.18v4L12,21l7,-3.82v-4L12,17l-7,-3.82zM12,3L1,9l11,6 11,-6 -11,-6z"/>
++</vector>
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_logout.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_logout.xml b/app/src/main/res/drawable/ic_logout.xml
+new file mode 100644
+--- /dev/null	(date 1765953594047)
++++ b/app/src/main/res/drawable/ic_logout.xml	(date 1765953594047)
+@@ -0,0 +1,11 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?attr/colorControlNormal"
++    android:autoMirrored="true">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M17,7l-1.41,1.41L18.17,11H8v2h10.17l-2.58,2.58L17,17l5,-5zM4,5h8V3H4c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h8v-2H4V5z"/>
++</vector>
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/domain/usecase/AddGiangVienUseCase.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/domain/usecase/AddGiangVienUseCase.java b/app/src/main/java/com/teamforone/quanlysinhvien/domain/usecase/AddGiangVienUseCase.java
+new file mode 100644
+--- /dev/null	(date 1765952906193)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/domain/usecase/AddGiangVienUseCase.java	(date 1765952906193)
+@@ -0,0 +1,18 @@
++package com.teamforone.quanlysinhvien.domain.usecase;
++
++import com.teamforone.quanlysinhvien.data.dao.QuanLyHocTapDAO;
++import com.teamforone.quanlysinhvien.domain.model.GiangVien;
++
++public class AddGiangVienUseCase {
++    private final QuanLyHocTapDAO dao;
++
++    public AddGiangVienUseCase(QuanLyHocTapDAO dao) {
++        this.dao = dao;
++    }
++
++    public boolean execute(GiangVien gv) {
++        // Có thể thêm logic kiểm tra dữ liệu ở đây (VD: mã không được rỗng)
++        if (gv.getMaGV() == null || gv.getMaGV().isEmpty()) return false;
++        return dao.addGiangVien(gv) != -1;
++    }
++}
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_class.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_class.xml b/app/src/main/res/drawable/ic_class.xml
+new file mode 100644
+--- /dev/null	(date 1765953570330)
++++ b/app/src/main/res/drawable/ic_class.xml	(date 1765953570330)
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?attr/colorControlNormal">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M20,4L4,4c-1.11,0 -1.99,0.89 -1.99,2L2,18c0,1.11 0.89,2 2,2h16c1.11,0 2,-0.89 2,-2L22,6c0,-1.11 -0.89,-2 -2,-2zM20,18L4,18v-6h16v6zM20,8L4,8L4,6h16v2z"/>
++</vector>
+\ No newline at end of file
+Index: app/src/main/res/layout/activity_quan_ly_giang_vien.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_quan_ly_giang_vien.xml b/app/src/main/res/layout/activity_quan_ly_giang_vien.xml
+new file mode 100644
+--- /dev/null	(date 1765956234974)
++++ b/app/src/main/res/layout/activity_quan_ly_giang_vien.xml	(date 1765956234974)
+@@ -0,0 +1,137 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:orientation="vertical"
++    android:padding="16dp"
++    android:background="#FFFFFF">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="horizontal"
++        android:gravity="center_vertical"
++        android:layout_marginBottom="10dp">
++
++        <ImageButton
++            android:id="@+id/btnBackGV"
++            android:layout_width="40dp"
++            android:layout_height="40dp"
++            android:src="@android:drawable/ic_menu_revert"
++            android:background="?attr/selectableItemBackgroundBorderless"/>
++
++        <TextView
++            android:layout_width="0dp"
++            android:layout_weight="1"
++            android:layout_height="wrap_content"
++            android:text="QUẢN LÝ GIẢNG VIÊN"
++            android:textSize="20sp"
++            android:textStyle="bold"
++            android:textColor="#333333"
++            android:gravity="center"/>
++        <View android:layout_width="40dp" android:layout_height="40dp"/>
++    </LinearLayout>
++
++    <ScrollView
++        android:layout_width="match_parent"
++        android:layout_height="match_parent">
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:orientation="vertical">
++
++            <TextView
++                android:text="1. Thông tin cá nhân"
++                android:textStyle="bold"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"/>
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:orientation="vertical"
++                android:background="#F5F5F5"
++                android:padding="10dp"
++                android:layout_marginVertical="5dp">
++
++                <EditText
++                    android:id="@+id/edtMaGV"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:hint="Mã GV (VD: GV01)" />
++
++                <EditText
++                    android:id="@+id/edtTenGV"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:hint="Tên Giảng Viên" />
++
++                <EditText
++                    android:id="@+id/edtSdtGV"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:hint="Số điện thoại"
++                    android:inputType="phone" />
++            </LinearLayout>
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:orientation="horizontal"
++                android:gravity="center"
++                android:layout_marginBottom="10dp">
++                <Button android:id="@+id/btnAdd" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Thêm" android:layout_marginEnd="5dp"/>
++                <Button android:id="@+id/btnUpdate" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sửa" android:backgroundTint="#FF9800" android:layout_marginEnd="5dp"/>
++                <Button android:id="@+id/btnDelete" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Xóa" android:backgroundTint="#D32F2F"/>
++            </LinearLayout>
++
++            <TextView
++                android:text="2. Phân công môn học &amp; Lớp"
++                android:textStyle="bold"
++                android:layout_marginTop="10dp"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"/>
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:orientation="vertical"
++                android:background="#E3F2FD"
++                android:padding="10dp"
++                android:layout_marginVertical="5dp">
++
++                <TextView android:text="Chọn Môn Học:" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
++                <Spinner
++                    android:id="@+id/spnMonHoc"
++                    android:layout_width="match_parent"
++                    android:layout_height="48dp"
++                    android:background="@android:drawable/btn_dropdown"/>
++
++                <TextView android:text="Chọn Lớp Học:" android:layout_marginTop="5dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
++                <Spinner
++                    android:id="@+id/spnLop"
++                    android:layout_width="match_parent"
++                    android:layout_height="48dp"
++                    android:background="@android:drawable/btn_dropdown"/>
++
++                <Button
++                    android:id="@+id/btnPhanCong"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:text="Lưu Phân Công cho GV này"
++                    android:backgroundTint="#009688"
++                    android:layout_marginTop="10dp"/>
++            </LinearLayout>
++
++            <TextView android:text="Danh sách Giảng Viên:" android:textStyle="bold" android:layout_marginTop="10dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
++
++            <ListView
++                android:id="@+id/lvGiangVien"
++                android:layout_width="match_parent"
++                android:layout_height="300dp"
++                android:background="#FAFAFA"/>
++
++        </LinearLayout>
++    </ScrollView>
++</LinearLayout>
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_teacher.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_teacher.xml b/app/src/main/res/drawable/ic_teacher.xml
+new file mode 100644
+--- /dev/null	(date 1765953765523)
++++ b/app/src/main/res/drawable/ic_teacher.xml	(date 1765953765523)
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?attr/colorControlNormal">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M12,12c2.21,0 4,-1.79 4,-4s-1.79,-4 -4,-4 -4,1.79 -4,4 1.79,4 4,4zM12,14c-2.67,0 -8,1.34 -8,4v2h16v-2c0,-2.66 -5.33,-4 -8,-4z"/>
++</vector>
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/service/GiangVienService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/service/GiangVienService.java b/app/src/main/java/com/teamforone/quanlysinhvien/service/GiangVienService.java
+new file mode 100644
+--- /dev/null	(date 1765952938857)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/service/GiangVienService.java	(date 1765952938857)
+@@ -0,0 +1,29 @@
++package com.teamforone.quanlysinhvien.service;
++
++import android.content.Context;
++import com.teamforone.quanlysinhvien.data.dao.QuanLyHocTapDAO;
++import com.teamforone.quanlysinhvien.domain.model.GiangVien;
++import com.teamforone.quanlysinhvien.domain.usecase.AddGiangVienUseCase;
++import com.teamforone.quanlysinhvien.domain.usecase.GetAllGiangVienUseCase;
++import java.util.List;
++
++public class GiangVienService {
++    private AddGiangVienUseCase addUseCase;
++    private GetAllGiangVienUseCase getAllUseCase;
++
++    public GiangVienService(Context context) {
++        // Khởi tạo DAO và inject vào UseCase
++        QuanLyHocTapDAO dao = new QuanLyHocTapDAO(context);
++        this.addUseCase = new AddGiangVienUseCase(dao);
++        this.getAllUseCase = new GetAllGiangVienUseCase(dao);
++    }
++
++    public boolean addGiangVien(String ma, String ten, String sdt) {
++        GiangVien gv = new GiangVien(ma, ten, sdt, "");
++        return addUseCase.execute(gv);
++    }
++
++    public List<GiangVien> getAllGiangVien() {
++        return getAllUseCase.execute();
++    }
++}
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_subject.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_subject.xml b/app/src/main/res/drawable/ic_subject.xml
+new file mode 100644
+--- /dev/null	(date 1765953741110)
++++ b/app/src/main/res/drawable/ic_subject.xml	(date 1765953741110)
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?attr/colorControlNormal">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M21,5c-1.11,-0.35 -2.33,-0.5 -3.5,-0.5 -1.95,0 -4.05,0.4 -5.5,1.5 -1.45,-1.1 -3.55,-1.5 -5.5,-1.5S2.45,4.9 1,6v14.65c0,0.25 0.25,0.5 0.5,0.5 0.1,0 0.15,-0.05 0.25,-0.05C3.1,20.45 5.05,20 6.5,20c1.95,0 4.05,0.4 5.5,1.5 1.35,-0.85 3.8,-1.5 5.5,-1.5 1.65,0 3.35,0.3 4.75,1.05 0.1,0.05 0.15,0.05 0.25,0.05 0.25,0 0.5,-0.25 0.5,-0.5L23,6c-0.6,-0.45 -1.25,-0.75 -2,-1zM21,18.5c-1.1,-0.35 -2.3,-0.5 -3.5,-0.5 -1.7,0 -4.15,0.65 -5.5,1.5L12,8c1.35,-0.85 3.8,-1.5 5.5,-1.5 1.2,0 2.4,0.15 3.5,0.5 v11.5z"/>
++</vector>
+\ No newline at end of file
+Index: app/src/main/res/drawable/ic_students.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/drawable/ic_students.xml b/app/src/main/res/drawable/ic_students.xml
+new file mode 100644
+--- /dev/null	(date 1765953719493)
++++ b/app/src/main/res/drawable/ic_students.xml	(date 1765953719493)
+@@ -0,0 +1,10 @@
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24"
++    android:tint="?attr/colorControlNormal">
++    <path
++        android:fillColor="@android:color/white"
++        android:pathData="M16,11c1.66,0 2.99,-1.34 2.99,-3S17.66,5 16,5c-1.66,0 -3,1.34 -3,3s1.34,3 3,3zM8,11c1.66,0 2.99,-1.34 2.99,-3S9.66,5 8,5C6.34,5 5,6.34 5,8s1.34,3 3,3zM8,13c-2.33,0 -7,1.17 -7,3.5L1,19h14v-2.5c0,-2.33 -4.67,-3.5 -7,-3.5zM16,13c-0.29,0 -0.62,0.02 -0.97,0.05 1.16,0.84 1.97,1.97 1.97,3.45L17,19h6v-2.5c0,-2.33 -4.67,-3.5 -7,-3.5z"/>
++</vector>
+\ No newline at end of file
+Index: app/src/main/res/layout/activity_main.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<androidx.constraintlayout.widget.ConstraintLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\r\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\"\r\n    xmlns:tools=\"http://schemas.android.com/tools\"\r\n    android:id=\"@+id/main\"\r\n    android:layout_width=\"match_parent\"\r\n    android:layout_height=\"match_parent\"\r\n    tools:context=\".MainActivity\">\r\n\r\n    <TextView\r\n        android:layout_width=\"wrap_content\"\r\n        android:layout_height=\"wrap_content\"\r\n        android:text=\"Hello World!\"\r\n        app:layout_constraintBottom_toBottomOf=\"parent\"\r\n        app:layout_constraintEnd_toEndOf=\"parent\"\r\n        app:layout_constraintStart_toStartOf=\"parent\"\r\n        app:layout_constraintTop_toTopOf=\"parent\" />\r\n\r\n</androidx.constraintlayout.widget.ConstraintLayout>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_main.xml b/app/src/main/res/layout/activity_main.xml
+--- a/app/src/main/res/layout/activity_main.xml	(revision b516ab99ae1f7b3d3c907af58e015105b184e748)
++++ b/app/src/main/res/layout/activity_main.xml	(date 1765953426894)
+@@ -1,19 +1,425 @@
+ <?xml version="1.0" encoding="utf-8"?>
+-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+     xmlns:tools="http://schemas.android.com/tools"
+-    android:id="@+id/main"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent"
+-    tools:context=".MainActivity">
++    android:background="#F5F5F5"
++    tools:context=".ui.MainActivity">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:padding="16dp">
++
++        <!-- Header -->
++        <androidx.cardview.widget.CardView
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_marginBottom="24dp"
++            app:cardCornerRadius="12dp"
++            app:cardElevation="4dp"
++            app:cardBackgroundColor="#2196F3">
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:orientation="vertical"
++                android:padding="20dp"
++                android:gravity="center">
++
++                <ImageView
++                    android:layout_width="80dp"
++                    android:layout_height="80dp"
++                    android:src="@drawable/ic_school"
++                    android:contentDescription="@string/app_logo"
++                    app:tint="@android:color/white" />
++
++                <TextView
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="HỆ THỐNG QUẢN LÝ SINH VIÊN"
++                    android:textSize="20sp"
++                    android:textStyle="bold"
++                    android:textColor="@android:color/white"
++                    android:layout_marginTop="12dp"
++                    android:textAlignment="center" />
++
++                <TextView
++                    android:id="@+id/tvWelcome"
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:text="Xin chào, Người dùng"
++                    android:textSize="14sp"
++                    android:textColor="@android:color/white"
++                    android:layout_marginTop="4dp" />
++            </LinearLayout>
++        </androidx.cardview.widget.CardView>
++
++        <!-- Grid của các chức năng -->
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:orientation="vertical">
++
++            <!-- Hàng 1 -->
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:orientation="horizontal"
++                android:weightSum="2">
++
++                <!-- Quản lý sinh viên -->
++                <androidx.cardview.widget.CardView
++                    android:id="@+id/cardStudentManagement"
++                    android:layout_width="0dp"
++                    android:layout_height="160dp"
++                    android:layout_weight="1"
++                    android:layout_margin="8dp"
++                    app:cardCornerRadius="12dp"
++                    app:cardElevation="4dp"
++                    android:clickable="true"
++                    android:focusable="true"
++                    android:foreground="?android:attr/selectableItemBackground">
++
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="match_parent"
++                        android:orientation="vertical"
++                        android:gravity="center"
++                        android:padding="16dp"
++                        android:background="#E3F2FD">
++
++                        <ImageView
++                            android:layout_width="64dp"
++                            android:layout_height="64dp"
++                            android:src="@drawable/ic_students"
++                            android:contentDescription="@string/student_management"
++                            app:tint="#2196F3" />
++
++                        <TextView
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="Quản Lý\nSinh Viên"
++                            android:textSize="16sp"
++                            android:textStyle="bold"
++                            android:textColor="#2196F3"
++                            android:layout_marginTop="12dp"
++                            android:textAlignment="center"
++                            android:gravity="center" />
++                    </LinearLayout>
++                </androidx.cardview.widget.CardView>
++
++                <!-- Điểm danh -->
++                <androidx.cardview.widget.CardView
++                    android:id="@+id/cardAttendance"
++                    android:layout_width="0dp"
++                    android:layout_height="160dp"
++                    android:layout_weight="1"
++                    android:layout_margin="8dp"
++                    app:cardCornerRadius="12dp"
++                    app:cardElevation="4dp"
++                    android:clickable="true"
++                    android:focusable="true"
++                    android:foreground="?android:attr/selectableItemBackground">
++
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="match_parent"
++                        android:orientation="vertical"
++                        android:gravity="center"
++                        android:padding="16dp"
++                        android:background="#E8F5E9">
++
++                        <ImageView
++                            android:layout_width="64dp"
++                            android:layout_height="64dp"
++                            android:src="@drawable/ic_attendance"
++                            android:contentDescription="@string/attendance"
++                            app:tint="#4CAF50" />
+ 
+-    <TextView
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:text="Hello World!"
+-        app:layout_constraintBottom_toBottomOf="parent"
+-        app:layout_constraintEnd_toEndOf="parent"
+-        app:layout_constraintStart_toStartOf="parent"
+-        app:layout_constraintTop_toTopOf="parent" />
++                        <TextView
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="Điểm Danh"
++                            android:textSize="16sp"
++                            android:textStyle="bold"
++                            android:textColor="#4CAF50"
++                            android:layout_marginTop="12dp"
++                            android:textAlignment="center" />
++                    </LinearLayout>
++                </androidx.cardview.widget.CardView>
++            </LinearLayout>
++
++            <!-- Hàng 2 -->
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:orientation="horizontal"
++                android:weightSum="2">
++
++                <!-- Quản lý lớp -->
++                <androidx.cardview.widget.CardView
++                    android:id="@+id/cardClassManagement"
++                    android:layout_width="0dp"
++                    android:layout_height="160dp"
++                    android:layout_weight="1"
++                    android:layout_margin="8dp"
++                    app:cardCornerRadius="12dp"
++                    app:cardElevation="4dp"
++                    android:clickable="true"
++                    android:focusable="true"
++                    android:foreground="?android:attr/selectableItemBackground">
++
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="match_parent"
++                        android:orientation="vertical"
++                        android:gravity="center"
++                        android:padding="16dp"
++                        android:background="#FFF3E0">
++
++                        <ImageView
++                            android:layout_width="64dp"
++                            android:layout_height="64dp"
++                            android:src="@drawable/ic_class"
++                            android:contentDescription="@string/class_management"
++                            app:tint="#FF9800" />
++
++                        <TextView
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="Quản Lý\nLớp"
++                            android:textSize="16sp"
++                            android:textStyle="bold"
++                            android:textColor="#FF9800"
++                            android:layout_marginTop="12dp"
++                            android:textAlignment="center"
++                            android:gravity="center" />
++                    </LinearLayout>
++                </androidx.cardview.widget.CardView>
++
++                <!-- Quản lý môn học -->
++                <androidx.cardview.widget.CardView
++                    android:id="@+id/cardSubjectManagement"
++                    android:layout_width="0dp"
++                    android:layout_height="160dp"
++                    android:layout_weight="1"
++                    android:layout_margin="8dp"
++                    app:cardCornerRadius="12dp"
++                    app:cardElevation="4dp"
++                    android:clickable="true"
++                    android:focusable="true"
++                    android:foreground="?android:attr/selectableItemBackground">
++
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="match_parent"
++                        android:orientation="vertical"
++                        android:gravity="center"
++                        android:padding="16dp"
++                        android:background="#F3E5F5">
++
++                        <ImageView
++                            android:layout_width="64dp"
++                            android:layout_height="64dp"
++                            android:src="@drawable/ic_subject"
++                            android:contentDescription="@string/subject_management"
++                            app:tint="#9C27B0" />
++
++                        <TextView
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="Quản Lý\nMôn Học"
++                            android:textSize="16sp"
++                            android:textStyle="bold"
++                            android:textColor="#9C27B0"
++                            android:layout_marginTop="12dp"
++                            android:textAlignment="center"
++                            android:gravity="center" />
++                    </LinearLayout>
++                </androidx.cardview.widget.CardView>
++            </LinearLayout>
++
++            <!-- Hàng 3 -->
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:orientation="horizontal"
++                android:weightSum="2">
++
++                <!-- Quản lý giảng viên -->
++                <androidx.cardview.widget.CardView
++                    android:id="@+id/cardTeacherManagement"
++                    android:layout_width="0dp"
++                    android:layout_height="160dp"
++                    android:layout_weight="1"
++                    android:layout_margin="8dp"
++                    app:cardCornerRadius="12dp"
++                    app:cardElevation="4dp"
++                    android:clickable="true"
++                    android:focusable="true"
++                    android:foreground="?android:attr/selectableItemBackground">
++
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="match_parent"
++                        android:orientation="vertical"
++                        android:gravity="center"
++                        android:padding="16dp"
++                        android:background="#FCE4EC">
++
++                        <ImageView
++                            android:layout_width="64dp"
++                            android:layout_height="64dp"
++                            android:src="@drawable/ic_teacher"
++                            android:contentDescription="@string/teacher_management"
++                            app:tint="#E91E63" />
++
++                        <TextView
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="Quản Lý\nGiảng Viên"
++                            android:textSize="16sp"
++                            android:textStyle="bold"
++                            android:textColor="#E91E63"
++                            android:layout_marginTop="12dp"
++                            android:textAlignment="center"
++                            android:gravity="center" />
++                    </LinearLayout>
++                </androidx.cardview.widget.CardView>
++
++                <!-- Quản lý tài khoản -->
++                <androidx.cardview.widget.CardView
++                    android:id="@+id/cardAccountManagement"
++                    android:layout_width="0dp"
++                    android:layout_height="160dp"
++                    android:layout_weight="1"
++                    android:layout_margin="8dp"
++                    app:cardCornerRadius="12dp"
++                    app:cardElevation="4dp"
++                    android:clickable="true"
++                    android:focusable="true"
++                    android:foreground="?android:attr/selectableItemBackground">
++
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="match_parent"
++                        android:orientation="vertical"
++                        android:gravity="center"
++                        android:padding="16dp"
++                        android:background="#E0F2F1">
+ 
+-</androidx.constraintlayout.widget.ConstraintLayout>
+\ No newline at end of file
++                        <ImageView
++                            android:layout_width="64dp"
++                            android:layout_height="64dp"
++                            android:src="@drawable/ic_account"
++                            android:contentDescription="@string/account_management"
++                            app:tint="#009688" />
++
++                        <TextView
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="Quản Lý\nTài Khoản"
++                            android:textSize="16sp"
++                            android:textStyle="bold"
++                            android:textColor="#009688"
++                            android:layout_marginTop="12dp"
++                            android:textAlignment="center"
++                            android:gravity="center" />
++                    </LinearLayout>
++                </androidx.cardview.widget.CardView>
++            </LinearLayout>
++
++            <!-- Hàng 4 -->
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:orientation="horizontal"
++                android:weightSum="2">
++
++                <!-- Thống kê báo cáo -->
++                <androidx.cardview.widget.CardView
++                    android:id="@+id/cardStatistics"
++                    android:layout_width="0dp"
++                    android:layout_height="160dp"
++                    android:layout_weight="1"
++                    android:layout_margin="8dp"
++                    app:cardCornerRadius="12dp"
++                    app:cardElevation="4dp"
++                    android:clickable="true"
++                    android:focusable="true"
++                    android:foreground="?android:attr/selectableItemBackground">
++
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="match_parent"
++                        android:orientation="vertical"
++                        android:gravity="center"
++                        android:padding="16dp"
++                        android:background="#FFF9C4">
++
++                        <ImageView
++                            android:layout_width="64dp"
++                            android:layout_height="64dp"
++                            android:src="@drawable/ic_statistics"
++                            android:contentDescription="@string/statistics"
++                            app:tint="#FBC02D" />
++
++                        <TextView
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="Thống Kê\nBáo Cáo"
++                            android:textSize="16sp"
++                            android:textStyle="bold"
++                            android:textColor="#F57F17"
++                            android:layout_marginTop="12dp"
++                            android:textAlignment="center"
++                            android:gravity="center" />
++                    </LinearLayout>
++                </androidx.cardview.widget.CardView>
++
++                <!-- Đăng xuất -->
++                <androidx.cardview.widget.CardView
++                    android:id="@+id/cardLogout"
++                    android:layout_width="0dp"
++                    android:layout_height="160dp"
++                    android:layout_weight="1"
++                    android:layout_margin="8dp"
++                    app:cardCornerRadius="12dp"
++                    app:cardElevation="4dp"
++                    android:clickable="true"
++                    android:focusable="true"
++                    android:foreground="?android:attr/selectableItemBackground">
++
++                    <LinearLayout
++                        android:layout_width="match_parent"
++                        android:layout_height="match_parent"
++                        android:orientation="vertical"
++                        android:gravity="center"
++                        android:padding="16dp"
++                        android:background="#FFEBEE">
++
++                        <ImageView
++                            android:layout_width="64dp"
++                            android:layout_height="64dp"
++                            android:src="@drawable/ic_logout"
++                            android:contentDescription="@string/logout"
++                            app:tint="#F44336" />
++
++                        <TextView
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="Đăng Xuất"
++                            android:textSize="16sp"
++                            android:textStyle="bold"
++                            android:textColor="#F44336"
++                            android:layout_marginTop="12dp"
++                            android:textAlignment="center" />
++                    </LinearLayout>
++                </androidx.cardview.widget.CardView>
++            </LinearLayout>
++        </LinearLayout>
++    </LinearLayout>
++</ScrollView>
+\ No newline at end of file
+Index: app/src/main/res/menu/menu_toolbar_home.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/menu/menu_toolbar_home.xml b/app/src/main/res/menu/menu_toolbar_home.xml
+new file mode 100644
+--- /dev/null	(date 1765953968929)
++++ b/app/src/main/res/menu/menu_toolbar_home.xml	(date 1765953968929)
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<menu xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:app="http://schemas.android.com/apk/res-auto">
++
++    <item
++        android:id="@+id/action_home"
++        android:icon="@android:drawable/ic_menu_view"
++        android:title="Home"
++        app:showAsAction="always" />
++</menu>
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLySinhVien.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLySinhVien.java b/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLySinhVien.java
+new file mode 100644
+--- /dev/null	(date 1765954206869)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLySinhVien.java	(date 1765954206869)
+@@ -0,0 +1,252 @@
++package com.teamforone.quanlysinhvien.ui;
++
++import android.content.DialogInterface;
++import android.content.Intent;
++import android.os.Bundle;
++import android.text.Editable;
++import android.text.TextWatcher;
++import android.view.Menu;
++import android.view.MenuItem;
++import android.view.View;
++import android.widget.AdapterView;
++import android.widget.ArrayAdapter;
++import android.widget.Button;
++import android.widget.EditText;
++import android.widget.Spinner;
++import android.widget.TextView;
++import android.widget.Toast;
++
++import androidx.appcompat.app.AlertDialog;
++import androidx.appcompat.app.AppCompatActivity;
++import androidx.appcompat.widget.Toolbar;
++import androidx.recyclerview.widget.LinearLayoutManager;
++import androidx.recyclerview.widget.RecyclerView;
++
++import com.google.android.material.floatingactionbutton.FloatingActionButton;
++import com.teamforone.quanlysinhvien.R;
++import com.teamforone.quanlysinhvien.domain.model.SinhVien;
++import com.teamforone.quanlysinhvien.service.SinhVienService;
++import com.teamforone.quanlysinhvien.util.AppLogger;
++import com.teamforone.quanlysinhvien.util.Constants;
++
++import java.util.ArrayList;
++import java.util.List;
++
++public class QuanLySinhVien extends AppCompatActivity implements SinhVienAdapter.OnItemClickListener {
++    private RecyclerView recyclerView;
++    private SinhVienAdapter adapter;
++    private SinhVienService sinhVienService;
++
++    private FloatingActionButton fabHome;
++    private List<SinhVien> sinhVienList;
++
++    private EditText etSearch;
++    private Spinner spinnerLop;
++    private TextView tvEmpty;
++    private Button btnSearch, btnResetFilter;
++    private FloatingActionButton fabAdd;
++
++    private String currentFilter = Constants.FILTER_ALL;
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        setContentView(R.layout.quanlysinhvien);
++
++        AppLogger.d(Constants.LOG_TAG_UI, "MainActivity created");
++
++        setupToolbar();
++        initViews();
++        initService();
++        setupRecyclerView();
++        setupSpinner();
++        setupListeners();
++        loadData();
++    }
++
++    private void setupToolbar() {
++        Toolbar toolbar = findViewById(R.id.toolbar);
++        setSupportActionBar(toolbar);
++    }
++
++    private void initViews() {
++        recyclerView = findViewById(R.id.recyclerView);
++        etSearch = findViewById(R.id.etSearch);
++        spinnerLop = findViewById(R.id.spinnerLop);
++        tvEmpty = findViewById(R.id.tvEmpty);
++        btnSearch = findViewById(R.id.btnSearch);
++        btnResetFilter = findViewById(R.id.btnResetFilter);
++        fabAdd = findViewById(R.id.fabAdd);
++        fabHome = findViewById(R.id.fabHome);
++
++    }
++
++    private void initService() {
++        sinhVienService = SinhVienService.getInstance(this);
++    }
++
++    private void setupRecyclerView() {
++        recyclerView.setLayoutManager(new LinearLayoutManager(this));
++        sinhVienList = new ArrayList<>();
++        adapter = new SinhVienAdapter(sinhVienList, this);
++        recyclerView.setAdapter(adapter);
++    }
++
++    private void setupSpinner() {
++        List<String> lopList = sinhVienService.getAllLopNames();
++        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(
++                this,
++                android.R.layout.simple_spinner_item,
++                lopList
++        );
++        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
++        spinnerLop.setAdapter(spinnerAdapter);
++    }
++
++    private void setupListeners() {
++        fabAdd.setOnClickListener(v -> {
++            Intent intent = new Intent(QuanLySinhVien.this, AddSinhVienActivity.class);
++            startActivity(intent);
++        });
++
++        btnSearch.setOnClickListener(v -> performSearch());
++        fabHome.setOnClickListener(v -> {
++            goHome();
++        });
++
++        etSearch.addTextChangedListener(new TextWatcher() {
++            @Override
++            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
++
++            @Override
++            public void onTextChanged(CharSequence s, int start, int before, int count) {
++                if (s.toString().isEmpty()) {
++                    loadData();
++                }
++            }
++
++            @Override
++            public void afterTextChanged(Editable s) {}
++        });
++
++        spinnerLop.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
++            @Override
++            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
++                String selected = parent.getItemAtPosition(position).toString();
++                currentFilter = selected;
++                applyFilter();
++            }
++
++            @Override
++            public void onNothingSelected(AdapterView<?> parent) {}
++        });
++
++        btnResetFilter.setOnClickListener(v -> resetFilters());
++    }
++
++    private void loadData() {
++        AppLogger.d(Constants.LOG_TAG_UI, "Loading all data");
++        sinhVienList = sinhVienService.getAllSinhVien();
++        updateUI();
++    }
++
++    private void performSearch() {
++        String keyword = etSearch.getText().toString().trim();
++        if (!keyword.isEmpty()) {
++            AppLogger.d(Constants.LOG_TAG_UI, "Performing search: " + keyword);
++            sinhVienList = sinhVienService.searchSinhVien(keyword);
++            updateUI();
++        } else {
++            Toast.makeText(this, "Vui lòng nhập từ khóa tìm kiếm", Toast.LENGTH_SHORT).show();
++        }
++    }
++
++    private void applyFilter() {
++        if (currentFilter.equals(Constants.FILTER_ALL)) {
++            loadData();
++        } else {
++            String maLop = currentFilter.split(" - ")[0];
++            AppLogger.d(Constants.LOG_TAG_UI, "Applying filter: " + maLop);
++            sinhVienList = sinhVienService.filterByLop(maLop);
++            updateUI();
++        }
++    }
++
++    private void resetFilters() {
++        spinnerLop.setSelection(0);
++        etSearch.setText("");
++        loadData();
++        Toast.makeText(this, "Đã reset bộ lọc", Toast.LENGTH_SHORT).show();
++    }
++
++    private void updateUI() {
++        if (sinhVienList.isEmpty()) {
++            recyclerView.setVisibility(View.GONE);
++            tvEmpty.setVisibility(View.VISIBLE);
++        } else {
++            recyclerView.setVisibility(View.VISIBLE);
++            tvEmpty.setVisibility(View.GONE);
++        }
++        adapter.updateList(sinhVienList);
++        AppLogger.d(Constants.LOG_TAG_UI, "UI updated with " + sinhVienList.size() + " items");
++    }
++
++    @Override
++    public void onEditClick(SinhVien sinhVien) {
++        AppLogger.d(Constants.LOG_TAG_UI, "Edit clicked for: " + sinhVien.getMaSV());
++        Intent intent = new Intent(QuanLySinhVien.this, EditSinhVienActivity.class);
++        intent.putExtra(Constants.EXTRA_MA_SV, sinhVien.getMaSV());
++        intent.putExtra(Constants.EXTRA_HO_TEN, sinhVien.getHoTen());
++        intent.putExtra(Constants.EXTRA_NGAY_SINH, sinhVien.getNgaySinh());
++        intent.putExtra(Constants.EXTRA_GIOI_TINH, sinhVien.getGioiTinh());
++        intent.putExtra(Constants.EXTRA_DIA_CHI, sinhVien.getDiaChi());
++        intent.putExtra(Constants.EXTRA_MA_LOP, sinhVien.getMaLop());
++        startActivity(intent);
++    }
++
++    @Override
++    public void onDeleteClick(SinhVien sinhVien) {
++        showDeleteConfirmDialog(sinhVien);
++    }
++
++    private void showDeleteConfirmDialog(SinhVien sinhVien) {
++        new AlertDialog.Builder(this)
++                .setTitle("Xác nhận xóa")
++                .setMessage("Bạn có chắc chắn muốn xóa sinh viên " + sinhVien.getHoTen() +
++                        " (Mã: " + sinhVien.getMaSV() + ") không?")
++                .setPositiveButton("Xóa", new DialogInterface.OnClickListener() {
++                    @Override
++                    public void onClick(DialogInterface dialog, int which) {
++                        deleteSinhVien(sinhVien.getMaSV());
++                    }
++                })
++                .setNegativeButton("Hủy", null)
++                .setIcon(android.R.drawable.ic_dialog_alert)
++                .show();
++    }
++
++    private void deleteSinhVien(String maSV) {
++        if (sinhVienService.deleteSinhVien(maSV)) {
++            Toast.makeText(this, Constants.MSG_DELETE_SUCCESS, Toast.LENGTH_SHORT).show();
++            loadData();
++        } else {
++            Toast.makeText(this, Constants.MSG_DELETE_FAILED, Toast.LENGTH_SHORT).show();
++        }
++    }
++
++    @Override
++    protected void onResume() {
++        super.onResume();
++        loadData();
++    }
++
++
++    private void goHome() {
++        Intent intent = new Intent(this, MainActivity.class);
++        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
++        startActivity(intent);
++        finish();
++    }
++
++
++}
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyMonHocActivity.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyMonHocActivity.java b/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyMonHocActivity.java
+new file mode 100644
+--- /dev/null	(date 1765955976258)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyMonHocActivity.java	(date 1765955976258)
+@@ -0,0 +1,105 @@
++package com.teamforone.quanlysinhvien.ui;
++
++import android.os.Bundle;
++import android.text.TextUtils;
++import android.widget.ArrayAdapter;
++import android.widget.Button;
++import android.widget.EditText;
++import android.widget.ImageButton; // Import mới
++import android.widget.ListView;
++import android.widget.Toast;
++import androidx.appcompat.app.AppCompatActivity;
++import com.teamforone.quanlysinhvien.R;
++import com.teamforone.quanlysinhvien.data.dao.QuanLyHocTapDAO;
++import java.util.List;
++
++public class QuanLyMonHocActivity extends AppCompatActivity {
++
++    private EditText edtMa, edtTen, edtTinChi;
++    private Button btnAdd, btnEdit, btnDel;
++    private ImageButton btnBack; // Khai báo nút
++    private ListView lvMonHoc;
++    private QuanLyHocTapDAO dao;
++    private ArrayAdapter<String> adapter;
++    private List<String> listMH;
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        setContentView(R.layout.activity_quan_ly_mon_hoc);
++
++        initViews();
++        dao = new QuanLyHocTapDAO(this);
++        loadData();
++        addEvents();
++    }
++
++    private void initViews() {
++        edtMa = findViewById(R.id.edtMaMH);
++        edtTen = findViewById(R.id.edtTenMH);
++        edtTinChi = findViewById(R.id.edtTinChi);
++        btnAdd = findViewById(R.id.btnAddMH);
++        btnEdit = findViewById(R.id.btnEditMH);
++        btnDel = findViewById(R.id.btnDelMH);
++        btnBack = findViewById(R.id.btnBackMH); // Ánh xạ
++        lvMonHoc = findViewById(R.id.lvMonHoc);
++    }
++
++    private void loadData() {
++        listMH = dao.getAllMonHocList();
++        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, listMH);
++        lvMonHoc.setAdapter(adapter);
++    }
++
++    private void addEvents() {
++        // NÚT BACK
++        btnBack.setOnClickListener(v -> finish());
++
++        // Click vào dòng
++        lvMonHoc.setOnItemClickListener((parent, view, position, id) -> {
++            String item = listMH.get(position);
++            try {
++                String[] parts = item.split(" - ");
++                edtMa.setText(parts[0]);
++                // (Logic tách chuỗi cũ của bạn giữ nguyên)
++                edtMa.setEnabled(false);
++            } catch (Exception e) {}
++        });
++
++        // Nút Thêm
++        btnAdd.setOnClickListener(v -> {
++            String ma = edtMa.getText().toString().trim();
++            String ten = edtTen.getText().toString().trim();
++            String tcStr = edtTinChi.getText().toString().trim();
++
++            if (TextUtils.isEmpty(ma) || TextUtils.isEmpty(ten) || TextUtils.isEmpty(tcStr)) return;
++
++            int tinChi = Integer.parseInt(tcStr);
++            if (dao.insertMonHoc(ma, ten, tinChi)) {
++                Toast.makeText(this, "Thêm thành công!", Toast.LENGTH_SHORT).show();
++                loadData();
++                clearInput();
++            }
++        });
++
++        // Nút Sửa
++        btnEdit.setOnClickListener(v -> {
++            // Logic sửa...
++            if(dao.updateMonHoc(edtMa.getText().toString(), edtTen.getText().toString(), Integer.parseInt(edtTinChi.getText().toString()))){
++                loadData(); clearInput();
++            }
++        });
++
++        // Nút Xóa
++        btnDel.setOnClickListener(v -> {
++            if(dao.deleteMonHoc(edtMa.getText().toString())){
++                loadData(); clearInput();
++            }
++        });
++    }
++
++    private void clearInput() {
++        edtMa.setText(""); edtTen.setText(""); edtTinChi.setText("");
++        edtMa.setEnabled(true);
++    }
++}
+\ No newline at end of file
+Index: app/src/main/res/layout/activity_quan_ly_mon_hoc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_quan_ly_mon_hoc.xml b/app/src/main/res/layout/activity_quan_ly_mon_hoc.xml
+new file mode 100644
+--- /dev/null	(date 1765955963813)
++++ b/app/src/main/res/layout/activity_quan_ly_mon_hoc.xml	(date 1765955963813)
+@@ -0,0 +1,92 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:orientation="vertical"
++    android:padding="16dp"
++    android:background="#FFFFFF">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="horizontal"
++        android:gravity="center_vertical"
++        android:layout_marginBottom="20dp">
++
++        <ImageButton
++            android:id="@+id/btnBackMH"
++            android:layout_width="40dp"
++            android:layout_height="40dp"
++            android:src="@android:drawable/ic_menu_revert"
++            android:background="?attr/selectableItemBackgroundBorderless"/>
++
++        <TextView
++            android:layout_width="0dp"
++            android:layout_weight="1"
++            android:layout_height="wrap_content"
++            android:text="QUẢN LÝ MÔN HỌC"
++            android:textSize="22sp"
++            android:textStyle="bold"
++            android:textColor="#009688"
++            android:gravity="center"/>
++
++        <View android:layout_width="40dp" android:layout_height="40dp"/>
++    </LinearLayout>
++
++    <EditText
++        android:id="@+id/edtMaMH"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:hint="Mã Môn Học"
++        android:minHeight="48dp"/>
++
++    <EditText
++        android:id="@+id/edtTenMH"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:hint="Tên Môn Học"
++        android:minHeight="48dp"/>
++
++    <EditText
++        android:id="@+id/edtTinChi"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:hint="Số Tín Chỉ"
++        android:inputType="number"
++        android:minHeight="48dp"/>
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="horizontal"
++        android:gravity="center"
++        android:layout_marginTop="15dp">
++
++        <Button
++            android:id="@+id/btnAddMH"
++            android:layout_width="0dp"
++            android:layout_weight="1"
++            android:layout_height="wrap_content"
++            android:text="Thêm" android:backgroundTint="#009688" android:layout_marginEnd="5dp"/>
++
++        <Button
++            android:id="@+id/btnEditMH"
++            android:layout_width="0dp"
++            android:layout_weight="1"
++            android:layout_height="wrap_content"
++            android:text="Sửa" android:backgroundTint="#FF9800" android:layout_marginHorizontal="5dp"/>
++
++        <Button
++            android:id="@+id/btnDelMH"
++            android:layout_width="0dp"
++            android:layout_weight="1"
++            android:layout_height="wrap_content"
++            android:text="Xóa" android:backgroundTint="#D32F2F" android:layout_marginStart="5dp"/>
++    </LinearLayout>
++
++    <ListView
++        android:id="@+id/lvMonHoc"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"
++        android:layout_marginTop="10dp"/>
++</LinearLayout>
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/domain/model/Lop.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/domain/model/Lop.java b/app/src/main/java/com/teamforone/quanlysinhvien/domain/model/Lop.java
+new file mode 100644
+--- /dev/null	(date 1765955183514)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/domain/model/Lop.java	(date 1765955183514)
+@@ -0,0 +1,30 @@
++package com.teamforone.quanlysinhvien.domain.model;
++
++public class Lop {
++    private String maLop;
++    private String tenLop;
++    private String khoa;
++
++    public Lop() { }
++
++    public Lop(String maLop, String tenLop, String khoa) {
++        this.maLop = maLop;
++        this.tenLop = tenLop;
++        this.khoa = khoa;
++    }
++
++    public String getMaLop() { return maLop; }
++    public void setMaLop(String maLop) { this.maLop = maLop; }
++
++    public String getTenLop() { return tenLop; }
++    public void setTenLop(String tenLop) { this.tenLop = tenLop; }
++
++    public String getKhoa() { return khoa; }
++    public void setKhoa(String khoa) { this.khoa = khoa; }
++
++    // Hàm này giúp ListView hiển thị text theo ý muốn
++    @Override
++    public String toString() {
++        return maLop + " - " + tenLop;
++    }
++}
+\ No newline at end of file
+Index: app/src/main/res/layout/activity_quan_ly_lop.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_quan_ly_lop.xml b/app/src/main/res/layout/activity_quan_ly_lop.xml
+new file mode 100644
+--- /dev/null	(date 1765955846288)
++++ b/app/src/main/res/layout/activity_quan_ly_lop.xml	(date 1765955846288)
+@@ -0,0 +1,121 @@
++<?xml version="1.0" encoding="utf-8"?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:orientation="vertical"
++    android:padding="16dp"
++    android:background="#FFFFFF">
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="horizontal"
++        android:gravity="center_vertical"
++        android:layout_marginBottom="20dp">
++
++        <ImageButton
++            android:id="@+id/btnBack"
++            android:layout_width="40dp"
++            android:layout_height="40dp"
++            android:src="@android:drawable/ic_menu_revert"
++            android:background="?attr/selectableItemBackgroundBorderless"
++            android:contentDescription="Quay lại"/>
++
++        <TextView
++            android:layout_width="0dp"
++            android:layout_weight="1"
++            android:layout_height="wrap_content"
++            android:text="QUẢN LÝ LỚP HỌC"
++            android:textSize="22sp"
++            android:textStyle="bold"
++            android:textColor="#3F51B5"
++            android:gravity="center"/>
++
++        <View android:layout_width="40dp" android:layout_height="40dp"/>
++    </LinearLayout>
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:background="#F0F0F0"
++        android:padding="10dp"
++        android:layout_marginBottom="15dp">
++
++        <EditText
++            android:id="@+id/edtMaLop"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:hint="Nhập Mã Lớp (VD: CNTT01)"
++            android:inputType="textCapCharacters"
++            android:minHeight="48dp"
++            android:layout_marginBottom="10dp"/>
++
++        <EditText
++            android:id="@+id/edtTenLop"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:hint="Nhập Tên Lớp"
++            android:inputType="textCapWords"
++            android:minHeight="48dp"
++            android:layout_marginBottom="10dp"/>
++
++        <EditText
++            android:id="@+id/edtKhoa"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:hint="Nhập Khoa (VD: CNTT)"
++            android:inputType="textCapCharacters"
++            android:minHeight="48dp"/>
++    </LinearLayout>
++
++    <LinearLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="horizontal"
++        android:gravity="center"
++        android:layout_marginBottom="10dp">
++
++        <Button
++            android:id="@+id/btnAddLop"
++            android:layout_width="0dp"
++            android:layout_weight="1"
++            android:layout_height="wrap_content"
++            android:text="Thêm"
++            android:backgroundTint="#3F51B5"
++            android:textColor="#FFFFFF"
++            android:layout_marginEnd="5dp"/>
++
++        <Button
++            android:id="@+id/btnEditLop"
++            android:layout_width="0dp"
++            android:layout_weight="1"
++            android:layout_height="wrap_content"
++            android:text="Sửa"
++            android:backgroundTint="#FF9800"
++            android:textColor="#FFFFFF"
++            android:layout_marginHorizontal="5dp"/>
++
++        <Button
++            android:id="@+id/btnDelLop"
++            android:layout_width="0dp"
++            android:layout_weight="1"
++            android:layout_height="wrap_content"
++            android:text="Xóa"
++            android:backgroundTint="#D32F2F"
++            android:textColor="#FFFFFF"
++            android:layout_marginStart="5dp"/>
++    </LinearLayout>
++
++    <View
++        android:layout_width="match_parent"
++        android:layout_height="1dp"
++        android:background="#CCCCCC"
++        android:layout_marginVertical="5dp"/>
++
++    <ListView
++        android:id="@+id/lvLop"
++        android:layout_width="match_parent"
++        android:layout_height="match_parent"/>
++
++</LinearLayout>
+\ No newline at end of file
+Index: app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyLopActivity.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyLopActivity.java b/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyLopActivity.java
+new file mode 100644
+--- /dev/null	(date 1765955824448)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/ui/QuanLyLopActivity.java	(date 1765955824448)
+@@ -0,0 +1,125 @@
++package com.teamforone.quanlysinhvien.ui;
++
++import android.os.Bundle;
++import android.text.TextUtils;
++import android.widget.ArrayAdapter;
++import android.widget.Button;
++import android.widget.EditText;
++import android.widget.ImageButton; // Import mới
++import android.widget.ListView;
++import android.widget.Toast;
++import androidx.appcompat.app.AppCompatActivity;
++
++import com.teamforone.quanlysinhvien.R;
++import com.teamforone.quanlysinhvien.data.dao.QuanLyHocTapDAO;
++import com.teamforone.quanlysinhvien.domain.model.Lop;
++
++import java.util.List;
++
++public class QuanLyLopActivity extends AppCompatActivity {
++
++    private EditText edtMa, edtTen, edtKhoa;
++    private Button btnAdd, btnEdit, btnDel;
++    private ImageButton btnBack; // Khai báo nút Back
++    private ListView lvLop;
++
++    private QuanLyHocTapDAO dao;
++    private ArrayAdapter<Lop> adapter;
++    private List<Lop> listLop;
++
++    @Override
++    protected void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        setContentView(R.layout.activity_quan_ly_lop);
++
++        initViews();
++        dao = new QuanLyHocTapDAO(this);
++        loadData();
++        addEvents();
++    }
++
++    private void initViews() {
++        edtMa = findViewById(R.id.edtMaLop);
++        edtTen = findViewById(R.id.edtTenLop);
++        edtKhoa = findViewById(R.id.edtKhoa);
++        btnAdd = findViewById(R.id.btnAddLop);
++        btnEdit = findViewById(R.id.btnEditLop);
++        btnDel = findViewById(R.id.btnDelLop);
++        btnBack = findViewById(R.id.btnBack); // Ánh xạ nút Back
++        lvLop = findViewById(R.id.lvLop);
++    }
++
++    private void loadData() {
++        listLop = dao.getAllLop();
++        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, listLop);
++        lvLop.setAdapter(adapter);
++    }
++
++    private void addEvents() {
++        // --- SỰ KIỆN NÚT QUAY LẠI ---
++        btnBack.setOnClickListener(v -> finish()); // Đóng Activity hiện tại để về Main
++
++        // Click vào dòng trong danh sách
++        lvLop.setOnItemClickListener((parent, view, position, id) -> {
++            Lop selectedLop = listLop.get(position);
++            edtMa.setText(selectedLop.getMaLop());
++            edtTen.setText(selectedLop.getTenLop());
++            edtKhoa.setText(selectedLop.getKhoa());
++            edtMa.setEnabled(false);
++        });
++
++        // Nút Thêm
++        btnAdd.setOnClickListener(v -> {
++            String ma = edtMa.getText().toString().trim();
++            String ten = edtTen.getText().toString().trim();
++            String khoa = edtKhoa.getText().toString().trim();
++
++            if (TextUtils.isEmpty(ma) || TextUtils.isEmpty(ten)) {
++                Toast.makeText(this, "Mã và Tên lớp không được để trống!", Toast.LENGTH_SHORT).show();
++                return;
++            }
++
++            Lop lopMoi = new Lop(ma, ten, khoa);
++            if (dao.insertLop(lopMoi)) {
++                Toast.makeText(this, "Thêm lớp thành công!", Toast.LENGTH_SHORT).show();
++                loadData();
++                clearInput();
++            } else {
++                Toast.makeText(this, "Thêm thất bại!", Toast.LENGTH_SHORT).show();
++            }
++        });
++
++        // Nút Sửa
++        btnEdit.setOnClickListener(v -> {
++            String ma = edtMa.getText().toString().trim();
++            String ten = edtTen.getText().toString().trim();
++            String khoa = edtKhoa.getText().toString().trim();
++
++            if (TextUtils.isEmpty(ma)) return;
++
++            Lop lopUpdate = new Lop(ma, ten, khoa);
++            if (dao.updateLop(lopUpdate)) {
++                Toast.makeText(this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
++                loadData();
++                clearInput();
++            }
++        });
++
++        // Nút Xóa
++        btnDel.setOnClickListener(v -> {
++            String ma = edtMa.getText().toString().trim();
++            if (TextUtils.isEmpty(ma)) return;
++
++            if (dao.deleteLop(ma)) {
++                Toast.makeText(this, "Đã xóa lớp!", Toast.LENGTH_SHORT).show();
++                loadData();
++                clearInput();
++            }
++        });
++    }
++
++    private void clearInput() {
++        edtMa.setText(""); edtTen.setText(""); edtKhoa.setText("");
++        edtMa.setEnabled(true); edtMa.requestFocus();
++    }
++}
+\ No newline at end of file

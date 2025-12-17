@@ -9,6 +9,9 @@ public class Constants {
     public static final String TABLE_LOP = "LOP";
     public static final String TABLE_SINHVIEN = "SINHVIEN";
     public static final String TABLE_USER = "USERS";
+    public static final String TABLE_GIANGVIEN = "GIANGVIEN"; // Bổ sung
+    public static final String TABLE_MONHOC = "MONHOC";       // Bổ sung
+    public static final String TABLE_PHANCONG = "PHANCONG";
 
     // LOP Table Columns
     public static final String COL_MA_LOP = "maLop";
@@ -32,6 +35,19 @@ public class Constants {
     public static final String ROLE_ADMIN = "ADMIN";
     public static final String ROLE_TEACHER = "TEACHER";
     public static final String ROLE_STUDENT = "STUDENT";
+
+    public static final String COL_MA_GV = "maGV";
+    public static final String COL_HO_TEN_GV = "hoTen";
+    public static final String COL_SDT_GV = "sdt";
+    public static final String COL_EMAIL_GV = "email";
+
+    // --- Cột bảng MÔN HỌC (Sửa lỗi cho QuanLyHocTapDAO) ---
+    public static final String COL_MA_MH = "maMH";
+    public static final String COL_TEN_MH = "tenMH";
+    public static final String COL_SO_TIN_CHI = "soTinChi";
+
+    // --- Cột bảng PHÂN CÔNG ---
+    public static final String COL_ID_PC = "id";
 
     // Gender
     public static final String GENDER_MALE = "Nam";

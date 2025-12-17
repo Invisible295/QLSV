@@ -1,0 +1,81 @@
+Index: app/src/main/AndroidManifest.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\r\n    package=\"com.teamforone.quanlysinhvien\">\r\n\r\n    <application\r\n        android:allowBackup=\"true\"\r\n        android:icon=\"@mipmap/ic_launcher\"\r\n        android:label=\"Quản Lý Sinh Viên\"\r\n        android:roundIcon=\"@mipmap/ic_launcher_round\"\r\n        android:supportsRtl=\"true\"\r\n        android:theme=\"@style/AppTheme\">\r\n\r\n        <!-- Main Activity -->\r\n        <activity\r\n            android:name=\".ui.MainActivity\"\r\n            android:exported=\"true\"\r\n            android:label=\"Quản Lý Sinh Viên\">\r\n            <intent-filter>\r\n                <action android:name=\"android.intent.action.MAIN\" />\r\n                <category android:name=\"android.intent.category.LAUNCHER\" />\r\n            </intent-filter>\r\n        </activity>\r\n\r\n        <!-- Add Student Activity -->\r\n        <activity\r\n            android:name=\".ui.AddSinhVienActivity\"\r\n            android:label=\"Thêm Sinh Viên\"\r\n            android:parentActivityName=\".ui.MainActivity\" />\r\n\r\n        <!-- Edit Student Activity -->\r\n        <activity\r\n            android:name=\".ui.EditSinhVienActivity\"\r\n            android:label=\"Cập Nhật Sinh Viên\"\r\n            android:parentActivityName=\".ui.MainActivity\" />\r\n\r\n    </application>\r\n\r\n</manifest>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+--- a/app/src/main/AndroidManifest.xml	(revision b516ab99ae1f7b3d3c907af58e015105b184e748)
++++ b/app/src/main/AndroidManifest.xml	(date 1765955296919)
+@@ -33,6 +33,12 @@
+             android:label="Cập Nhật Sinh Viên"
+             android:parentActivityName=".ui.MainActivity" />
+ 
++
++        <activity android:name=".ui.QuanLyGiangVienActivity" android:label="Quản Lý Giảng viên" />
++        <activity android:name=".ui.QuanLyMonHocActivity" android:label="Quản Lý Môn Học"/>
++
++        <activity android:name=".ui.QuanLyLopActivity" android:label="Quản Lý Lớp Học" />
++
+     </application>
+ 
+ </manifest>
+\ No newline at end of file
+Index: app/src/main/res/layout/quanlysinhvien.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\r\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\"\r\n    android:layout_width=\"match_parent\"\r\n    android:layout_height=\"match_parent\"\r\n    android:orientation=\"vertical\"\r\n    android:background=\"#F5F5F5\">\r\n\r\n    <!-- Toolbar -->\r\n    <androidx.appcompat.widget.Toolbar\r\n        android:id=\"@+id/toolbar\"\r\n        android:layout_width=\"match_parent\"\r\n        android:layout_height=\"?attr/actionBarSize\"\r\n        android:background=\"@color/colorPrimary\"\r\n        android:elevation=\"4dp\"\r\n        app:title=\"Quản Lý Sinh Viên\"\r\n        app:titleTextColor=\"@android:color/white\" />\r\n\r\n    <!-- Search and Filter Section -->\r\n    <LinearLayout\r\n        android:layout_width=\"match_parent\"\r\n        android:layout_height=\"wrap_content\"\r\n        android:orientation=\"vertical\"\r\n        android:padding=\"16dp\"\r\n        android:background=\"@android:color/white\"\r\n        android:elevation=\"2dp\">\r\n\r\n        <!-- Search Bar -->\r\n        <LinearLayout\r\n            android:layout_width=\"match_parent\"\r\n            android:layout_height=\"wrap_content\"\r\n            android:orientation=\"horizontal\"\r\n            android:gravity=\"center_vertical\">\r\n\r\n            <EditText\r\n                android:id=\"@+id/etSearch\"\r\n                android:layout_width=\"0dp\"\r\n                android:layout_height=\"48dp\"\r\n                android:layout_weight=\"1\"\r\n                android:hint=\"Tìm kiếm theo mã SV hoặc tên...\"\r\n                android:paddingStart=\"16dp\"\r\n                android:paddingEnd=\"16dp\"\r\n                android:background=\"@drawable/search_background\"\r\n                android:drawableStart=\"@android:drawable/ic_menu_search\"\r\n                android:drawablePadding=\"8dp\" />\r\n\r\n            <Button\r\n                android:id=\"@+id/btnSearch\"\r\n                android:layout_width=\"wrap_content\"\r\n                android:layout_height=\"48dp\"\r\n                android:layout_marginStart=\"8dp\"\r\n                android:text=\"Tìm\"\r\n                android:textColor=\"@android:color/white\"\r\n                android:background=\"@color/colorPrimary\" />\r\n        </LinearLayout>\r\n\r\n        <!-- Filter Section -->\r\n        <LinearLayout\r\n            android:layout_width=\"match_parent\"\r\n            android:layout_height=\"wrap_content\"\r\n            android:orientation=\"horizontal\"\r\n            android:layout_marginTop=\"12dp\"\r\n            android:gravity=\"center_vertical\">\r\n\r\n            <TextView\r\n                android:layout_width=\"wrap_content\"\r\n                android:layout_height=\"wrap_content\"\r\n                android:text=\"Lọc theo lớp:\"\r\n                android:textSize=\"14sp\"\r\n                android:textColor=\"#666\" />\r\n\r\n            <Spinner\r\n                android:id=\"@+id/spinnerLop\"\r\n                android:layout_width=\"0dp\"\r\n                android:layout_height=\"48dp\"\r\n                android:layout_weight=\"1\"\r\n                android:layout_marginStart=\"8dp\"\r\n                android:background=\"@drawable/spinner_background\" />\r\n\r\n            <Button\r\n                android:id=\"@+id/btnResetFilter\"\r\n                android:layout_width=\"wrap_content\"\r\n                android:layout_height=\"48dp\"\r\n                android:layout_marginStart=\"8dp\"\r\n                android:text=\"Reset\"\r\n                android:textColor=\"@android:color/white\"\r\n                android:background=\"@color/colorAccent\" />\r\n        </LinearLayout>\r\n    </LinearLayout>\r\n\r\n    <!-- RecyclerView for Student List -->\r\n    <androidx.recyclerview.widget.RecyclerView\r\n        android:id=\"@+id/recyclerView\"\r\n        android:layout_width=\"match_parent\"\r\n        android:layout_height=\"0dp\"\r\n        android:layout_weight=\"1\"\r\n        android:padding=\"8dp\"\r\n        android:clipToPadding=\"false\" />\r\n\r\n    <!-- Empty State -->\r\n    <TextView\r\n        android:id=\"@+id/tvEmpty\"\r\n        android:layout_width=\"match_parent\"\r\n        android:layout_height=\"0dp\"\r\n        android:layout_weight=\"1\"\r\n        android:text=\"Không có sinh viên nào\"\r\n        android:textSize=\"16sp\"\r\n        android:textColor=\"#999\"\r\n        android:gravity=\"center\"\r\n        android:visibility=\"gone\" />\r\n\r\n    <!-- Floating Action Button -->\r\n    <com.google.android.material.floatingactionbutton.FloatingActionButton\r\n        android:id=\"@+id/fabAdd\"\r\n        android:layout_width=\"wrap_content\"\r\n        android:layout_height=\"wrap_content\"\r\n        android:layout_gravity=\"end|bottom\"\r\n        android:layout_margin=\"16dp\"\r\n        android:src=\"@android:drawable/ic_input_add\"\r\n        app:tint=\"@android:color/white\"\r\n        app:backgroundTint=\"@color/colorPrimary\" />\r\n</LinearLayout>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/quanlysinhvien.xml b/app/src/main/res/layout/quanlysinhvien.xml
+--- a/app/src/main/res/layout/quanlysinhvien.xml	(revision b516ab99ae1f7b3d3c907af58e015105b184e748)
++++ b/app/src/main/res/layout/quanlysinhvien.xml	(date 1765954263870)
+@@ -109,14 +109,35 @@
+         android:gravity="center"
+         android:visibility="gone" />
+ 
+-    <!-- Floating Action Button -->
+-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+-        android:id="@+id/fabAdd"
+-        android:layout_width="wrap_content"
+-        android:layout_height="wrap_content"
+-        android:layout_gravity="end|bottom"
+-        android:layout_margin="16dp"
+-        android:src="@android:drawable/ic_input_add"
+-        app:tint="@android:color/white"
+-        app:backgroundTint="@color/colorPrimary" />
++
++    <FrameLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:padding="16dp">
++
++        <!-- FAB Home (trái) -->
++        <com.google.android.material.floatingactionbutton.FloatingActionButton
++            android:id="@+id/fabHome"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_gravity="start|bottom"
++            android:src="@android:drawable/ic_menu_view"
++            app:tint="@android:color/white"
++            app:backgroundTint="@color/colorAccent"
++            app:elevation="0dp"
++            app:pressedTranslationZ="0dp"/>
++
++        <!-- FAB Add (phải) -->
++        <com.google.android.material.floatingactionbutton.FloatingActionButton
++            android:id="@+id/fabAdd"
++            android:layout_width="wrap_content"
++            android:layout_height="wrap_content"
++            android:layout_gravity="end|bottom"
++            android:src="@android:drawable/ic_input_add"
++            app:tint="@android:color/white"
++            app:backgroundTint="@color/colorPrimary"
++            app:elevation="0dp"
++            app:pressedTranslationZ="0dp"/>
++
++    </FrameLayout>
+ </LinearLayout>
+\ No newline at end of file

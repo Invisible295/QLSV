@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#FFFFFF">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="15dp">
+        <ImageButton android:id="@+id/btnBackMH" android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_menu_revert" android:background="?attr/selectableItemBackgroundBorderless"/>
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:text="QUẢN LÝ MÔN HỌC" android:textSize="20sp" android:textStyle="bold" android:gravity="center"/>
+        <View android:layout_width="40dp" android:layout_height="40dp"/>
+    </LinearLayout>
+
+    <EditText android:id="@+id/edtMaMH" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Mã Môn Học"/>
+    <EditText android:id="@+id/edtTenMH" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Tên Môn Học"/>
+    <EditText android:id="@+id/edtTinChi" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Số Tín Chỉ" android:inputType="number"/>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginTop="10dp">
+        <Button android:id="@+id/btnAddMH" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Thêm"/>
+        <Button android:id="@+id/btnEditMH" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Sửa"/>
+        <Button android:id="@+id/btnDelMH" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Xóa" android:backgroundTint="#D32F2F"/>
+    </LinearLayout>
+
+    <ListView android:id="@+id/lvMonHoc" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_marginTop="10dp"/>
+</LinearLayout>
