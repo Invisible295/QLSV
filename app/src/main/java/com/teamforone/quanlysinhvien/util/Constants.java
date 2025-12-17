@@ -8,6 +8,7 @@ public class Constants {
     // Table Names
     public static final String TABLE_LOP = "LOP";
     public static final String TABLE_SINHVIEN = "SINHVIEN";
+    public static final String TABLE_USER = "USERS";
 
     // LOP Table Columns
     public static final String COL_MA_LOP = "maLop";
@@ -20,6 +21,17 @@ public class Constants {
     public static final String COL_NGAY_SINH = "ngaySinh";
     public static final String COL_GIOI_TINH = "gioiTinh";
     public static final String COL_DIA_CHI = "diaChi";
+
+    // USERS Table Columns
+    public static final String COL_USER_ID = "userId";
+    public static final String COL_USERNAME = "username";
+    public static final String COL_PASSWORD = "password";
+    public static final String COL_ROLE = "role";
+
+    // User Roles
+    public static final String ROLE_ADMIN = "ADMIN";
+    public static final String ROLE_TEACHER = "TEACHER";
+    public static final String ROLE_STUDENT = "STUDENT";
 
     // Gender
     public static final String GENDER_MALE = "Nam";
@@ -36,6 +48,11 @@ public class Constants {
     public static final String EXTRA_DIA_CHI = "diaChi";
     public static final String EXTRA_MA_LOP = "maLop";
 
+    // User Intent Extras
+    public static final String EXTRA_USER_ID = "userId";
+    public static final String EXTRA_USERNAME = "username";
+    public static final String EXTRA_ROLE = "role";
+
     // Messages
     public static final String MSG_ADD_SUCCESS = "Thêm sinh viên thành công!";
     public static final String MSG_ADD_FAILED = "Thêm sinh viên thất bại!";
@@ -47,9 +64,21 @@ public class Constants {
     public static final String MSG_DUPLICATE_ID = "Mã sinh viên đã tồn tại!";
     public static final String MSG_NO_DATA = "Không có sinh viên nào";
 
+    // User Messages
+    public static final String MSG_USER_ADD_SUCCESS = "Thêm người dùng thành công!";
+    public static final String MSG_USER_ADD_FAILED = "Thêm người dùng thất bại!";
+    public static final String MSG_USER_UPDATE_SUCCESS = "Cập nhật người dùng thành công!";
+    public static final String MSG_USER_UPDATE_FAILED = "Cập nhật người dùng thất bại!";
+    public static final String MSG_USER_DELETE_SUCCESS = "Xóa người dùng thành công!";
+    public static final String MSG_USER_DELETE_FAILED = "Xóa người dùng thất bại!";
+    public static final String MSG_USER_DUPLICATE_USERNAME = "Tên đăng nhập đã tồn tại!";
+    public static final String MSG_USER_LOGIN_FAILED = "Sai tên đăng nhập hoặc mật khẩu!";
+
     // Log Tags
     public static final String LOG_TAG_DB = "DatabaseHelper";
     public static final String LOG_TAG_DAO = "SinhVienDAO";
     public static final String LOG_TAG_SERVICE = "SinhVienService";
     public static final String LOG_TAG_UI = "UI";
+
+    public static final String LOG_TAG_USER_DAO = "UserDAO";
 }
