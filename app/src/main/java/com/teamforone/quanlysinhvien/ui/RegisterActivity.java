@@ -16,10 +16,13 @@ import com.teamforone.quanlysinhvien.service.UserService;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private EditText etUsername, etPassword, etConfirmPassword;
+    private EditText etUsername, etPassword;
     private RadioGroup rgRole;
     private RadioButton rbStudent, rbTeacher;
-    private Button btnRegister, btnBackToLogin;
+    private Button btnRegister;
+
+    private RadioButton rbAdmin;
+
 
     private RegisterUseCase registerUseCase;
 
@@ -34,26 +37,17 @@ public class RegisterActivity extends AppCompatActivity {
         rbStudent = findViewById(R.id.rbStudent);
         rbTeacher = findViewById(R.id.rbTeacher);
         btnRegister = findViewById(R.id.btnRegister);
-        btnBackToLogin = findViewById(R.id.btnBackLogin);
-        etConfirmPassword = findViewById(R.id.etConfirmPassword);
+        rbAdmin = findViewById(R.id.rbAdmin);
+
 
         registerUseCase = new RegisterUseCase(new UserService(this));
 
         btnRegister.setOnClickListener(v -> doRegister());
-        btnBackToLogin.setOnClickListener(v -> {
-            finish(); // hoặc Intent chuyển về LoginActivity nếu cần
-        });
     }
 
     private void doRegister() {
         String username = etUsername.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
-        String confirmPassword = etConfirmPassword.getText().toString().trim();
-
-        if (!password.equals(confirmPassword)) {
-            Toast.makeText(this, "Mật khẩu và xác nhận mật khẩu không khớp", Toast.LENGTH_SHORT).show();
-            return;
-        }
 
         // Lấy role từ RadioGroup
         User.Role role;
@@ -62,16 +56,13 @@ public class RegisterActivity extends AppCompatActivity {
             role = User.Role.STUDENT;
         } else if (selectedId == rbTeacher.getId()) {
             role = User.Role.TEACHER;
+        } else if (selectedId == rbAdmin.getId()) {
+            role = User.Role.ADMIN;
         } else {
             Toast.makeText(this, "Vui lòng chọn role", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        String passwordPattern = "^(?=.*[A-Z])(?=.*\\d).{8,}$";
-        if (!password.matches(passwordPattern)) {
-            Toast.makeText(this, "Mật khẩu phải có ít nhất 8 ký tự, 1 chữ hoa và 1 số", Toast.LENGTH_LONG).show();
-            return;
-        }
 
         // Gọi UseCase (và service bên trong)
         String result = registerUseCase.execute(username, password, role);

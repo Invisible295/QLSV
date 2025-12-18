@@ -1,0 +1,217 @@
+Index: app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.teamforone.quanlysinhvien.data.db;\r\n\r\nimport android.content.Context;\r\nimport android.database.sqlite.SQLiteDatabase;\r\nimport android.database.sqlite.SQLiteOpenHelper;\r\nimport android.util.Log;\r\n\r\nimport java.io.File;\r\nimport java.io.FileOutputStream;\r\nimport java.io.InputStream;\r\nimport java.io.OutputStream;\r\n\r\npublic class DatabaseHelper extends SQLiteOpenHelper {\r\n\r\n    private static final String TAG = \"DatabaseHelper\";\r\n    private static DatabaseHelper instance;\r\n    private final Context context;\r\n    private final String databaseName;\r\n\r\n    // Phiên bản DB, dùng để nâng cấp nếu cần\r\n    private static final int DATABASE_VERSION = 1;\r\n\r\n    private DatabaseHelper(Context context, String databaseName) {\r\n        super(context, databaseName, null, DATABASE_VERSION);\r\n        this.context = context.getApplicationContext();\r\n        this.databaseName = databaseName;\r\n    }\r\n\r\n    // Singleton\r\n    public static synchronized DatabaseHelper getInstance(Context context, String databaseName) {\r\n        if (instance == null) {\r\n            instance = new DatabaseHelper(context, databaseName);\r\n        }\r\n        return instance;\r\n    }\r\n\r\n    /**\r\n     * Copy DB từ assets nếu chưa có trong internal storage\r\n     */\r\n    public void prepareDatabase() {\r\n        File dbFile = context.getDatabasePath(databaseName);\r\n        if (dbFile.exists()) {\r\n            Log.d(TAG, \"Database already exists: \" + dbFile.getPath());\r\n            return; // DB đã có\r\n        }\r\n\r\n        try {\r\n            // Tạo thư mục nếu chưa tồn tại\r\n            File parent = dbFile.getParentFile();\r\n            if (!parent.exists()) parent.mkdirs();\r\n\r\n            // Copy DB từ assets/databases/\r\n            try (InputStream is = context.getAssets().open(\"databases/\" + databaseName);\r\n                 OutputStream os = new FileOutputStream(dbFile)) {\r\n\r\n                byte[] buffer = new byte[1024];\r\n                int length;\r\n                while ((length = is.read(buffer)) > 0) {\r\n                    os.write(buffer, 0, length);\r\n                }\r\n                os.flush();\r\n                Log.d(TAG, \"Database copied from assets successfully.\");\r\n            }\r\n        } catch (Exception e) {\r\n            Log.e(TAG, \"Error copying database from assets\", e);\r\n            throw new RuntimeException(\"Failed to copy database from assets\", e);\r\n        }\r\n    }\r\n\r\n    /**\r\n     * Mở database đọc/ghi\r\n     */\r\n    public SQLiteDatabase openDatabase() {\r\n        prepareDatabase();\r\n        File dbFile = context.getDatabasePath(databaseName);\r\n        return SQLiteDatabase.openDatabase(dbFile.getPath(), null, SQLiteDatabase.OPEN_READWRITE);\r\n    }\r\n\r\n    @Override\r\n    public void onCreate(SQLiteDatabase db) {\r\n        // Không tạo DB mới vì chúng ta copy từ assets\r\n    }\r\n\r\n    @Override\r\n    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {\r\n        // Xử lý nâng cấp nếu cần\r\n    }\r\n\r\n    @Override\r\n    public synchronized SQLiteDatabase getReadableDatabase() {\r\n        prepareDatabase();\r\n        return super.getReadableDatabase();\r\n    }\r\n\r\n    @Override\r\n    public synchronized SQLiteDatabase getWritableDatabase() {\r\n        prepareDatabase();\r\n        return super.getWritableDatabase();\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java b/app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java
+--- a/app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java	(revision 6a947c9eb31a8c372555c5069df0a9599a4d4bd6)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/data/db/DatabaseHelper.java	(date 1765973388738)
+@@ -18,7 +18,7 @@
+     private final String databaseName;
+ 
+     // Phiên bản DB, dùng để nâng cấp nếu cần
+-    private static final int DATABASE_VERSION = 1;
++    private static final int DATABASE_VERSION = 2;
+ 
+     private DatabaseHelper(Context context, String databaseName) {
+         super(context, databaseName, null, DATABASE_VERSION);
+@@ -84,6 +84,8 @@
+     @Override
+     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+         // Xử lý nâng cấp nếu cần
++        db.execSQL("DROP TABLE IF EXISTS USERS");
++        onCreate(db);
+     }
+ 
+     @Override
+Index: app/src/main/java/com/teamforone/quanlysinhvien/data/dao/BuoiHocDAO.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.teamforone.quanlysinhvien.data.dao;\r\n\r\n\r\nimport android.content.ContentValues;\r\nimport android.content.Context;\r\nimport android.database.Cursor;\r\nimport android.database.sqlite.SQLiteDatabase;\r\n\r\nimport com.teamforone.quanlysinhvien.data.db.DatabaseProvider;\r\nimport com.teamforone.quanlysinhvien.domain.model.BuoiHoc;\r\nimport com.teamforone.quanlysinhvien.util.AppLogger;\r\n\r\nimport java.util.ArrayList;\r\nimport java.util.List;\r\n\r\npublic class BuoiHocDAO {\r\n    private DatabaseProvider databaseProvider;\r\n\r\n    public BuoiHocDAO(Context context) {\r\n        databaseProvider = DatabaseProvider.getInstance(context);\r\n    }\r\n\r\n    public boolean insert(BuoiHoc buoiHoc) {\r\n        SQLiteDatabase db = databaseProvider.getWritableDatabase();\r\n        try {\r\n            ContentValues values = new ContentValues();\r\n            values.put(\"maMonHoc\", buoiHoc.getMaMonHoc());\r\n            values.put(\"maGV\", buoiHoc.getMaGV());\r\n            values.put(\"maLop\", buoiHoc.getMaLop());\r\n            values.put(\"ngayHoc\", buoiHoc.getNgayHoc());\r\n            values.put(\"tietBatDau\", buoiHoc.getTietBatDau());\r\n            values.put(\"tietKetThuc\", buoiHoc.getTietKetThuc());\r\n            values.put(\"ghiChu\", buoiHoc.getGhiChu());\r\n\r\n            long result = db.insert(\"BUOI_HOC\", null, values);\r\n            if (result != -1) {\r\n                AppLogger.d(\"BuoiHocDAO\", \"Inserted: \" + buoiHoc);\r\n                return true;\r\n            }\r\n        } catch (Exception e) {\r\n            AppLogger.e(\"BuoiHocDAO\", \"Error inserting buoi hoc\", e);\r\n        }\r\n        return false;\r\n    }\r\n\r\n    public boolean update(BuoiHoc buoiHoc) {\r\n        SQLiteDatabase db = databaseProvider.getWritableDatabase();\r\n        try {\r\n            ContentValues values = new ContentValues();\r\n            values.put(\"maMonHoc\", buoiHoc.getMaMonHoc());\r\n            values.put(\"maGV\", buoiHoc.getMaGV());\r\n            values.put(\"maLop\", buoiHoc.getMaLop());\r\n            values.put(\"ngayHoc\", buoiHoc.getNgayHoc());\r\n            values.put(\"tietBatDau\", buoiHoc.getTietBatDau());\r\n            values.put(\"tietKetThuc\", buoiHoc.getTietKetThuc());\r\n            values.put(\"ghiChu\", buoiHoc.getGhiChu());\r\n\r\n            int result = db.update(\"BUOI_HOC\", values, \"id = ?\",\r\n                    new String[]{String.valueOf(buoiHoc.getId())});\r\n            if (result > 0) {\r\n                AppLogger.d(\"BuoiHocDAO\", \"Updated: \" + buoiHoc);\r\n                return true;\r\n            }\r\n        } catch (Exception e) {\r\n            AppLogger.e(\"BuoiHocDAO\", \"Error updating buoi hoc\", e);\r\n        }\r\n        return false;\r\n    }\r\n\r\n    public boolean delete(int id) {\r\n        SQLiteDatabase db = databaseProvider.getWritableDatabase();\r\n        try {\r\n            int result = db.delete(\"BUOI_HOC\", \"id = ?\",\r\n                    new String[]{String.valueOf(id)});\r\n            if (result > 0) {\r\n                AppLogger.d(\"BuoiHocDAO\", \"Deleted buoi hoc: \" + id);\r\n                return true;\r\n            }\r\n        } catch (Exception e) {\r\n            AppLogger.e(\"BuoiHocDAO\", \"Error deleting buoi hoc\", e);\r\n        }\r\n        return false;\r\n    }\r\n\r\n    public List<BuoiHoc> getAll() {\r\n        List<BuoiHoc> list = new ArrayList<>();\r\n        SQLiteDatabase db = databaseProvider.getReadableDatabase();\r\n\r\n        String query = \"SELECT b.*, m.tenMonHoc, g.hoTen as hoTenGV, l.tenLop \" +\r\n                \"FROM BUOI_HOC b \" +\r\n                \"LEFT JOIN MONHOC m ON b.maMonHoc = m.maMonHoc \" +\r\n                \"LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV \" +\r\n                \"LEFT JOIN LOP l ON b.maLop = l.maLop \" +\r\n                \"ORDER BY b.ngayHoc DESC, b.tietBatDau\";\r\n\r\n        Cursor cursor = null;\r\n        try {\r\n            cursor = db.rawQuery(query, null);\r\n            if (cursor.moveToFirst()) {\r\n                do {\r\n                    list.add(extractBuoiHocFromCursor(cursor));\r\n                } while (cursor.moveToNext());\r\n            }\r\n            AppLogger.d(\"BuoiHocDAO\", \"Retrieved \" + list.size() + \" buoi hoc\");\r\n        } catch (Exception e) {\r\n            AppLogger.e(\"BuoiHocDAO\", \"Error getting all buoi hoc\", e);\r\n        } finally {\r\n            if (cursor != null) cursor.close();\r\n        }\r\n        return list;\r\n    }\r\n\r\n    public List<BuoiHoc> getByLop(String maLop) {\r\n        List<BuoiHoc> list = new ArrayList<>();\r\n        SQLiteDatabase db = databaseProvider.getReadableDatabase();\r\n\r\n        String query = \"SELECT b.*, m.tenMonHoc, g.hoTen as hoTenGV, l.tenLop \" +\r\n                \"FROM BUOI_HOC b \" +\r\n                \"LEFT JOIN MONHOC m ON b.maMonHoc = m.maMonHoc \" +\r\n                \"LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV \" +\r\n                \"LEFT JOIN LOP l ON b.maLop = l.maLop \" +\r\n                \"WHERE b.maLop = ? \" +\r\n                \"ORDER BY b.ngayHoc DESC, b.tietBatDau\";\r\n\r\n        Cursor cursor = null;\r\n        try {\r\n            cursor = db.rawQuery(query, new String[]{maLop});\r\n            if (cursor.moveToFirst()) {\r\n                do {\r\n                    list.add(extractBuoiHocFromCursor(cursor));\r\n                } while (cursor.moveToNext());\r\n            }\r\n        } catch (Exception e) {\r\n            AppLogger.e(\"BuoiHocDAO\", \"Error getting buoi hoc by lop\", e);\r\n        } finally {\r\n            if (cursor != null) cursor.close();\r\n        }\r\n        return list;\r\n    }\r\n\r\n    public BuoiHoc getById(int id) {\r\n        SQLiteDatabase db = databaseProvider.getReadableDatabase();\r\n        String query = \"SELECT b.*, m.tenMonHoc, g.hoTen as hoTenGV, l.tenLop \" +\r\n                \"FROM BUOI_HOC b \" +\r\n                \"LEFT JOIN MONHOC m ON b.maMonHoc = m.maMonHoc \" +\r\n                \"LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV \" +\r\n                \"LEFT JOIN LOP l ON b.maLop = l.maLop \" +\r\n                \"WHERE b.id = ?\";\r\n\r\n        Cursor cursor = null;\r\n        try {\r\n            cursor = db.rawQuery(query, new String[]{String.valueOf(id)});\r\n            if (cursor.moveToFirst()) {\r\n                return extractBuoiHocFromCursor(cursor);\r\n            }\r\n        } catch (Exception e) {\r\n            AppLogger.e(\"BuoiHocDAO\", \"Error getting buoi hoc by id\", e);\r\n        } finally {\r\n            if (cursor != null) cursor.close();\r\n        }\r\n        return null;\r\n    }\r\n\r\n    private BuoiHoc extractBuoiHocFromCursor(Cursor cursor) {\r\n        BuoiHoc bh = new BuoiHoc();\r\n        bh.setId(cursor.getInt(0));\r\n        bh.setMaMonHoc(cursor.getString(1));\r\n        bh.setMaGV(cursor.getString(2));\r\n        bh.setMaLop(cursor.getString(3));\r\n        bh.setNgayHoc(cursor.getString(4));\r\n        bh.setTietBatDau(cursor.getInt(5));\r\n        bh.setTietKetThuc(cursor.getInt(6));\r\n        bh.setGhiChu(cursor.getString(7));\r\n        bh.setTenMonHoc(cursor.getString(8));\r\n        bh.setHoTenGV(cursor.getString(9));\r\n        bh.setTenLop(cursor.getString(10));\r\n        return bh;\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/data/dao/BuoiHocDAO.java b/app/src/main/java/com/teamforone/quanlysinhvien/data/dao/BuoiHocDAO.java
+--- a/app/src/main/java/com/teamforone/quanlysinhvien/data/dao/BuoiHocDAO.java	(revision 6a947c9eb31a8c372555c5069df0a9599a4d4bd6)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/data/dao/BuoiHocDAO.java	(date 1765973388738)
+@@ -24,13 +24,12 @@
+         SQLiteDatabase db = databaseProvider.getWritableDatabase();
+         try {
+             ContentValues values = new ContentValues();
+-            values.put("maMonHoc", buoiHoc.getMaMonHoc());
++            values.put("maMH", buoiHoc.getMaMonHoc());
+             values.put("maGV", buoiHoc.getMaGV());
+             values.put("maLop", buoiHoc.getMaLop());
+             values.put("ngayHoc", buoiHoc.getNgayHoc());
+             values.put("tietBatDau", buoiHoc.getTietBatDau());
+             values.put("tietKetThuc", buoiHoc.getTietKetThuc());
+-            values.put("ghiChu", buoiHoc.getGhiChu());
+ 
+             long result = db.insert("BUOI_HOC", null, values);
+             if (result != -1) {
+@@ -47,13 +46,12 @@
+         SQLiteDatabase db = databaseProvider.getWritableDatabase();
+         try {
+             ContentValues values = new ContentValues();
+-            values.put("maMonHoc", buoiHoc.getMaMonHoc());
++            values.put("maMH", buoiHoc.getMaMonHoc());
+             values.put("maGV", buoiHoc.getMaGV());
+             values.put("maLop", buoiHoc.getMaLop());
+             values.put("ngayHoc", buoiHoc.getNgayHoc());
+             values.put("tietBatDau", buoiHoc.getTietBatDau());
+             values.put("tietKetThuc", buoiHoc.getTietKetThuc());
+-            values.put("ghiChu", buoiHoc.getGhiChu());
+ 
+             int result = db.update("BUOI_HOC", values, "id = ?",
+                     new String[]{String.valueOf(buoiHoc.getId())});
+@@ -86,13 +84,16 @@
+         List<BuoiHoc> list = new ArrayList<>();
+         SQLiteDatabase db = databaseProvider.getReadableDatabase();
+ 
+-        String query = "SELECT b.*, m.tenMonHoc, g.hoTen as hoTenGV, l.tenLop " +
+-                "FROM BUOI_HOC b " +
+-                "LEFT JOIN MONHOC m ON b.maMonHoc = m.maMonHoc " +
+-                "LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV " +
+-                "LEFT JOIN LOP l ON b.maLop = l.maLop " +
+-                "ORDER BY b.ngayHoc DESC, b.tietBatDau";
++        String query =
++                "SELECT b.*, m.tenMH, g.hoTen AS hoTenGV, l.tenLop " +
++                        "FROM BUOI_HOC b " +
++                        "LEFT JOIN MONHOC m ON b.maMH = m.maMH " +
++                        "LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV " +
++                        "LEFT JOIN LOP l ON b.maLop = l.maLop " +
++                        "ORDER BY b.ngayHoc DESC, b.tietBatDau";
+ 
++
++
+         Cursor cursor = null;
+         try {
+             cursor = db.rawQuery(query, null);
+@@ -114,9 +115,9 @@
+         List<BuoiHoc> list = new ArrayList<>();
+         SQLiteDatabase db = databaseProvider.getReadableDatabase();
+ 
+-        String query = "SELECT b.*, m.tenMonHoc, g.hoTen as hoTenGV, l.tenLop " +
++        String query = "SELECT b.*, m.tenMH, g.hoTen as hoTenGV, l.tenLop " +
+                 "FROM BUOI_HOC b " +
+-                "LEFT JOIN MONHOC m ON b.maMonHoc = m.maMonHoc " +
++                "LEFT JOIN MONHOC m ON b.maMH = m.maMH " +
+                 "LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV " +
+                 "LEFT JOIN LOP l ON b.maLop = l.maLop " +
+                 "WHERE b.maLop = ? " +
+@@ -140,9 +141,9 @@
+ 
+     public BuoiHoc getById(int id) {
+         SQLiteDatabase db = databaseProvider.getReadableDatabase();
+-        String query = "SELECT b.*, m.tenMonHoc, g.hoTen as hoTenGV, l.tenLop " +
++        String query = "SELECT b.*, m.tenMH, g.hoTen as hoTenGV, l.tenLop " +
+                 "FROM BUOI_HOC b " +
+-                "LEFT JOIN MONHOC m ON b.maMonHoc = m.maMonHoc " +
++                "LEFT JOIN MONHOC m ON b.maMH = m.maMH " +
+                 "LEFT JOIN GIANGVIEN g ON b.maGV = g.maGV " +
+                 "LEFT JOIN LOP l ON b.maLop = l.maLop " +
+                 "WHERE b.id = ?";
+Index: app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.teamforone.quanlysinhvien.ui;\r\n\r\nimport android.content.Intent;\r\nimport android.os.Bundle;\r\nimport android.view.View;\r\nimport android.widget.TextView;\r\nimport android.widget.Toast;\r\n\r\nimport androidx.activity.OnBackPressedCallback;\r\nimport androidx.appcompat.app.AlertDialog;\r\nimport androidx.appcompat.app.AppCompatActivity;\r\nimport androidx.cardview.widget.CardView;\r\n\r\nimport com.teamforone.quanlysinhvien.R;\r\nimport com.teamforone.quanlysinhvien.domain.model.User;\r\n\r\npublic class MainActivity extends AppCompatActivity {\r\n\r\n    private CardView cardStudentManagement, cardAttendance, cardClassManagement;\r\n    private CardView cardSubjectManagement, cardTeacherManagement, cardAccountManagement;\r\n    private CardView cardStatistics, cardLogout;\r\n    private TextView tvWelcome;\r\n\r\n    private User currentUser;\r\n\r\n    @Override\r\n    protected void onCreate(Bundle savedInstanceState) {\r\n        super.onCreate(savedInstanceState);\r\n        setContentView(R.layout.activity_main);\r\n\r\n        initViews();\r\n\r\n        // Lấy user từ intent\r\n        currentUser = (User) getIntent().getSerializableExtra(\"user\");\r\n        if (currentUser != null) {\r\n            tvWelcome.setText(\"Xin chào, \" + currentUser.getUsername());\r\n            adjustUiByRole(currentUser.getRole());\r\n        }\r\n\r\n        setupClickListeners();\r\n\r\n        getOnBackPressedDispatcher().addCallback(this,\r\n                new OnBackPressedCallback(true) {\r\n                    @Override\r\n                    public void handleOnBackPressed() {\r\n                        showExitDialog();\r\n                    }\r\n                });\r\n    }\r\n\r\n    private void initViews() {\r\n        tvWelcome = findViewById(R.id.tvWelcome);\r\n        cardStudentManagement = findViewById(R.id.cardStudentManagement);\r\n        cardAttendance = findViewById(R.id.cardAttendance);\r\n        cardClassManagement = findViewById(R.id.cardClassManagement);\r\n        cardSubjectManagement = findViewById(R.id.cardSubjectManagement);\r\n        cardTeacherManagement = findViewById(R.id.cardTeacherManagement);\r\n        cardAccountManagement = findViewById(R.id.cardAccountManagement);\r\n        cardStatistics = findViewById(R.id.cardStatistics);\r\n        cardLogout = findViewById(R.id.cardLogout);\r\n    }\r\n\r\n    private void adjustUiByRole(User.Role role) {\r\n        switch (role) {\r\n            case ADMIN:\r\n                // Admin thấy tất cả\r\n                setAllCardsVisible(true);\r\n                break;\r\n            case TEACHER:\r\n                cardAccountManagement.setVisibility(View.GONE); // không quản lý tài khoản\r\n                cardAttendance.setVisibility(View.VISIBLE);\r\n                cardClassManagement.setVisibility(View.VISIBLE);\r\n                cardSubjectManagement.setVisibility(View.VISIBLE);\r\n                cardTeacherManagement.setVisibility(View.GONE); // không quản lý giáo viên khác\r\n                cardStatistics.setVisibility(View.VISIBLE);\r\n                cardStudentManagement.setVisibility(View.VISIBLE);\r\n                break;\r\n            case STUDENT:\r\n                cardAccountManagement.setVisibility(View.GONE);\r\n                cardAttendance.setVisibility(View.VISIBLE);\r\n                cardClassManagement.setVisibility(View.GONE);\r\n                cardSubjectManagement.setVisibility(View.GONE);\r\n                cardTeacherManagement.setVisibility(View.GONE);\r\n                cardStatistics.setVisibility(View.GONE);\r\n                cardStudentManagement.setVisibility(View.GONE);\r\n                break;\r\n        }\r\n    }\r\n\r\n    private void setAllCardsVisible(boolean visible) {\r\n        int visibility = visible ? View.VISIBLE : View.GONE;\r\n        cardStudentManagement.setVisibility(visibility);\r\n        cardAttendance.setVisibility(visibility);\r\n        cardClassManagement.setVisibility(visibility);\r\n        cardSubjectManagement.setVisibility(visibility);\r\n        cardTeacherManagement.setVisibility(visibility);\r\n        cardAccountManagement.setVisibility(visibility);\r\n        cardStatistics.setVisibility(visibility);\r\n        cardLogout.setVisibility(visibility);\r\n    }\r\n\r\n    private void setupClickListeners() {\r\n        cardStudentManagement.setOnClickListener(v -> startActivity(new Intent(this, QuanLySinhVien.class)));\r\n        cardClassManagement.setOnClickListener(v -> startActivity(new Intent(this, QuanLyLopActivity.class)));\r\n        cardSubjectManagement.setOnClickListener(v -> startActivity(new Intent(this, QuanLyMonHocActivity.class)));\r\n        cardTeacherManagement.setOnClickListener(v -> startActivity(new Intent(this, QuanLyGiangVienActivity.class)));\r\n        // \uD83D\uDC49 NÚT BÁO CÁO – THỐNG KÊ\r\n        cardStatistics.setOnClickListener(\r\n                v -> startActivity(new Intent(this, ReportActivity.class)));\r\n        // TODO: Thêm các activity khác khi sẵn sàng\r\n        cardLogout.setOnClickListener(v -> showLogoutDialog());\r\n    }\r\n\r\n    private void showLogoutDialog() {\r\n        new AlertDialog.Builder(this)\r\n                .setTitle(\"Đăng xuất\")\r\n                .setMessage(\"Bạn có chắc chắn muốn đăng xuất?\")\r\n                .setPositiveButton(\"Có\", (dialog, which) -> {\r\n                    Toast.makeText(MainActivity.this, \"Đã đăng xuất\", Toast.LENGTH_SHORT).show();\r\n                    startActivity(new Intent(MainActivity.this, LoginActivity.class));\r\n                    finish();\r\n                })\r\n                .setNegativeButton(\"Không\", null)\r\n                .show();\r\n    }\r\n\r\n    private void showExitDialog() {\r\n        new AlertDialog.Builder(this)\r\n                .setTitle(\"Thoát ứng dụng\")\r\n                .setMessage(\"Bạn có muốn thoát ứng dụng?\")\r\n                .setPositiveButton(\"Có\", (dialog, which) -> finishAffinity())\r\n                .setNegativeButton(\"Không\", null)\r\n                .show();\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java b/app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java
+--- a/app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java	(revision 6a947c9eb31a8c372555c5069df0a9599a4d4bd6)
++++ b/app/src/main/java/com/teamforone/quanlysinhvien/ui/MainActivity.java	(date 1765973388738)
+@@ -108,6 +108,8 @@
+         cardStatistics.setOnClickListener(
+                 v -> startActivity(new Intent(this, ReportActivity.class)));
+         // TODO: Thêm các activity khác khi sẵn sàng
++        cardAttendance.setOnClickListener(
++                v -> startActivity(new Intent(this, DanhSachBuoiHocActivity.class)));
+         cardLogout.setOnClickListener(v -> showLogoutDialog());
+     }
+ 
+Index: app/src/main/AndroidManifest.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\r\n    package=\"com.teamforone.quanlysinhvien\">\r\n\r\n    <application\r\n        android:allowBackup=\"true\"\r\n        android:icon=\"@mipmap/ic_launcher\"\r\n        android:label=\"Quản Lý Sinh Viên\"\r\n        android:roundIcon=\"@mipmap/ic_launcher_round\"\r\n        android:supportsRtl=\"true\"\r\n        android:theme=\"@style/AppTheme\">\r\n        <activity\r\n            android:name=\".ui.RegisterActivity\"\r\n            android:exported=\"false\" />\r\n        <activity\r\n            android:name=\".ui.LoginActivity\"\r\n            android:exported=\"true\" >\r\n            <intent-filter>\r\n                <action android:name=\"android.intent.action.MAIN\" />\r\n                <category android:name=\"android.intent.category.LAUNCHER\" />\r\n            </intent-filter>\r\n        </activity>\r\n        <activity\r\n            android:name=\".ui.MainActivity\"\r\n            android:exported=\"false\"\r\n            android:label=\"Quản Lý Sinh Viên\"/>\r\n        <activity\r\n            android:name=\".ui.QuanLySinhVien\"\r\n            android:exported=\"false\"\r\n            android:label=\"Danh Sách Sinh Viên\"\r\n            android:parentActivityName=\".ui.MainActivity\" /> <!-- Add Student -->\r\n        <activity\r\n            android:name=\".ui.AddSinhVienActivity\"\r\n            android:exported=\"false\"\r\n            android:label=\"Thêm Sinh Viên\"\r\n            android:parentActivityName=\".ui.QuanLySinhVien\" /> <!-- Edit Student -->\r\n        <activity\r\n            android:name=\".ui.EditSinhVienActivity\"\r\n            android:exported=\"false\"\r\n            android:label=\"Cập Nhật Sinh Viên\"\r\n            android:parentActivityName=\".ui.QuanLySinhVien\" />\r\n\r\n        <!-- Thêm các activity còn thiếu -->\r\n        <activity\r\n            android:name=\".ui.QuanLyLopActivity\"\r\n            android:exported=\"false\"\r\n            android:label=\"Quản Lý Lớp\"\r\n            android:parentActivityName=\".ui.MainActivity\" />\r\n        <activity\r\n            android:name=\".ui.QuanLyMonHocActivity\"\r\n            android:exported=\"false\"\r\n            android:label=\"Quản Lý Môn Học\"\r\n            android:parentActivityName=\".ui.MainActivity\" />\r\n        <activity\r\n            android:name=\".ui.QuanLyGiangVienActivity\"\r\n            android:exported=\"false\"\r\n            android:label=\"Quản Lý Giảng Viên\"\r\n            android:parentActivityName=\".ui.MainActivity\" />\r\n        <activity android:name=\".ui.ReportActivity\"/>\r\n        <activity\r\n            android:name=\".ui.DanhSachBuoiHocActivity\"\r\n            android:exported=\"false\"/>\r\n        <activity\r\n            android:name=\".ui.DiemDanhActivity\"\r\n            android:exported=\"false\"/>\r\n        <activity\r\n            android:name=\".ui.TaoBuoiHocActivity\"\r\n            android:exported=\"false\"/>\r\n\r\n\r\n\r\n    </application>\r\n\r\n</manifest>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+--- a/app/src/main/AndroidManifest.xml	(revision 6a947c9eb31a8c372555c5069df0a9599a4d4bd6)
++++ b/app/src/main/AndroidManifest.xml	(date 1765973388737)
+@@ -59,13 +59,16 @@
+         <activity android:name=".ui.ReportActivity"/>
+         <activity
+             android:name=".ui.DanhSachBuoiHocActivity"
+-            android:exported="false"/>
++            android:exported="false"
++            android:parentActivityName=".ui.MainActivity"/>
+         <activity
+             android:name=".ui.DiemDanhActivity"
+-            android:exported="false"/>
++            android:exported="false"
++            android:parentActivityName=".ui.DanhSachBuoiHocActivity"/>
+         <activity
+             android:name=".ui.TaoBuoiHocActivity"
+-            android:exported="false"/>
++            android:exported="false"
++            android:parentActivityName=".ui.DanhSachBuoiHocActivity"/>
+ 
+ 
+ 
+Index: .idea/deploymentTargetSelector.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"deploymentTargetSelector\">\r\n    <selectionStates>\r\n      <SelectionState runConfigName=\"app\">\r\n        <option name=\"selectionMode\" value=\"DROPDOWN\" />\r\n        <DropdownSelection timestamp=\"2025-12-17T09:23:17.805923700Z\">\r\n          <Target type=\"DEFAULT_BOOT\">\r\n            <handle>\r\n              <DeviceId pluginId=\"LocalEmulator\" identifier=\"path=C:\\Users\\Lenovo\\.android\\avd\\Pixel_8.avd\" />\r\n            </handle>\r\n          </Target>\r\n        </DropdownSelection>\r\n        <DialogSelection />\r\n      </SelectionState>\r\n    </selectionStates>\r\n  </component>\r\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/deploymentTargetSelector.xml b/.idea/deploymentTargetSelector.xml
+--- a/.idea/deploymentTargetSelector.xml	(revision 6a947c9eb31a8c372555c5069df0a9599a4d4bd6)
++++ b/.idea/deploymentTargetSelector.xml	(date 1765973388737)
+@@ -4,10 +4,10 @@
+     <selectionStates>
+       <SelectionState runConfigName="app">
+         <option name="selectionMode" value="DROPDOWN" />
+-        <DropdownSelection timestamp="2025-12-17T09:23:17.805923700Z">
++        <DropdownSelection timestamp="2025-12-17T10:31:36.508310600Z">
+           <Target type="DEFAULT_BOOT">
+             <handle>
+-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Lenovo\.android\avd\Pixel_8.avd" />
++              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Lenovo\.android\avd\Pixel_9.avd" />
+             </handle>
+           </Target>
+         </DropdownSelection>
+Index: app/src/main/res/layout/activity_tao_buoi_hoc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\r\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\"\r\n    android:layout_width=\"match_parent\"\r\n    android:layout_height=\"match_parent\"\r\n    android:orientation=\"vertical\"\r\n    android:background=\"#F5F5F5\">\r\n\r\n    <androidx.appcompat.widget.Toolbar\r\n        android:id=\"@+id/toolbar\"\r\n        android:layout_width=\"match_parent\"\r\n        android:layout_height=\"?attr/actionBarSize\"\r\n        android:background=\"@color/colorPrimary\"\r\n        android:elevation=\"4dp\"\r\n        app:title=\"Tạo Buổi Học\"\r\n        app:titleTextColor=\"@android:color/white\"\r\n        app:navigationIcon=\"?attr/homeAsUpIndicator\" />\r\n\r\n    <ScrollView\r\n        android:layout_width=\"match_parent\"\r\n        android:layout_height=\"0dp\"\r\n        android:layout_weight=\"1\">\r\n\r\n        <LinearLayout\r\n            android:layout_width=\"match_parent\"\r\n            android:layout_height=\"wrap_content\"\r\n            android:orientation=\"vertical\"\r\n            android:padding=\"24dp\">\r\n\r\n            <androidx.cardview.widget.CardView\r\n                android:layout_width=\"match_parent\"\r\n                android:layout_height=\"wrap_content\"\r\n                app:cardCornerRadius=\"12dp\"\r\n                app:cardElevation=\"4dp\">\r\n\r\n                <LinearLayout\r\n                    android:layout_width=\"match_parent\"\r\n                    android:layout_height=\"wrap_content\"\r\n                    android:orientation=\"vertical\"\r\n                    android:padding=\"20dp\">\r\n\r\n                    <TextView\r\n                        android:layout_width=\"wrap_content\"\r\n                        android:layout_height=\"wrap_content\"\r\n                        android:text=\"Môn học *\"\r\n                        android:textSize=\"14sp\"\r\n                        android:textColor=\"#666\" />\r\n\r\n                    <Spinner\r\n                        android:id=\"@+id/spinnerMonHoc\"\r\n                        android:layout_width=\"match_parent\"\r\n                        android:layout_height=\"48dp\"\r\n                        android:layout_marginTop=\"8dp\"\r\n                        android:background=\"@drawable/spinner_background\" />\r\n\r\n                    <TextView\r\n                        android:layout_width=\"wrap_content\"\r\n                        android:layout_height=\"wrap_content\"\r\n                        android:layout_marginTop=\"16dp\"\r\n                        android:text=\"Giảng viên\"\r\n                        android:textSize=\"14sp\"\r\n                        android:textColor=\"#666\" />\r\n\r\n                    <Spinner\r\n                        android:id=\"@+id/spinnerGiangVien\"\r\n                        android:layout_width=\"match_parent\"\r\n                        android:layout_height=\"48dp\"\r\n                        android:layout_marginTop=\"8dp\"\r\n                        android:background=\"@drawable/spinner_background\" />\r\n\r\n                    <TextView\r\n                        android:layout_width=\"wrap_content\"\r\n                        android:layout_height=\"wrap_content\"\r\n                        android:layout_marginTop=\"16dp\"\r\n                        android:text=\"Lớp *\"\r\n                        android:textSize=\"14sp\"\r\n                        android:textColor=\"#666\" />\r\n\r\n                    <Spinner\r\n                        android:id=\"@+id/spinnerLop\"\r\n                        android:layout_width=\"match_parent\"\r\n                        android:layout_height=\"48dp\"\r\n                        android:layout_marginTop=\"8dp\"\r\n                        android:background=\"@drawable/spinner_background\" />\r\n\r\n                    <com.google.android.material.textfield.TextInputLayout\r\n                        android:layout_width=\"match_parent\"\r\n                        android:layout_height=\"wrap_content\"\r\n                        android:layout_marginTop=\"16dp\"\r\n                        android:hint=\"Ngày học (dd/MM/yyyy) *\"\r\n                        app:startIconDrawable=\"@android:drawable/ic_menu_my_calendar\">\r\n\r\n                        <com.google.android.material.textfield.TextInputEditText\r\n                            android:id=\"@+id/etNgayHoc\"\r\n                            android:layout_width=\"match_parent\"\r\n                            android:layout_height=\"wrap_content\"\r\n                            android:focusable=\"false\"\r\n                            android:clickable=\"true\"\r\n                            android:cursorVisible=\"false\"\r\n                            android:inputType=\"none\" />\r\n                    </com.google.android.material.textfield.TextInputLayout>\r\n\r\n                    <TextView\r\n                        android:layout_width=\"wrap_content\"\r\n                        android:layout_height=\"wrap_content\"\r\n                        android:layout_marginTop=\"16dp\"\r\n                        android:text=\"Tiết học *\"\r\n                        android:textSize=\"14sp\"\r\n                        android:textColor=\"#666\" />\r\n\r\n                    <LinearLayout\r\n                        android:layout_width=\"match_parent\"\r\n                        android:layout_height=\"wrap_content\"\r\n                        android:orientation=\"horizontal\"\r\n                        android:layout_marginTop=\"8dp\">\r\n\r\n                        <Spinner\r\n                            android:id=\"@+id/spinnerTietBatDau\"\r\n                            android:layout_width=\"0dp\"\r\n                            android:layout_height=\"48dp\"\r\n                            android:layout_weight=\"1\"\r\n                            android:background=\"@drawable/spinner_background\" />\r\n\r\n                        <TextView\r\n                            android:layout_width=\"wrap_content\"\r\n                            android:layout_height=\"wrap_content\"\r\n                            android:text=\" - \"\r\n                            android:textSize=\"16sp\"\r\n                            android:layout_gravity=\"center_vertical\"\r\n                            android:paddingStart=\"8dp\"\r\n                            android:paddingEnd=\"8dp\" />\r\n\r\n                        <Spinner\r\n                            android:id=\"@+id/spinnerTietKetThuc\"\r\n                            android:layout_width=\"0dp\"\r\n                            android:layout_height=\"48dp\"\r\n                            android:layout_weight=\"1\"\r\n                            android:background=\"@drawable/spinner_background\" />\r\n                    </LinearLayout>\r\n\r\n                    <com.google.android.material.textfield.TextInputLayout\r\n                        android:layout_width=\"match_parent\"\r\n                        android:layout_height=\"wrap_content\"\r\n                        android:layout_marginTop=\"16dp\"\r\n                        android:hint=\"Ghi chú\">\r\n\r\n                        <com.google.android.material.textfield.TextInputEditText\r\n                            android:id=\"@+id/etGhiChu\"\r\n                            android:layout_width=\"match_parent\"\r\n                            android:layout_height=\"wrap_content\"\r\n                            android:inputType=\"textMultiLine\"\r\n                            android:minLines=\"2\" />\r\n                    </com.google.android.material.textfield.TextInputLayout>\r\n\r\n                </LinearLayout>\r\n            </androidx.cardview.widget.CardView>\r\n\r\n            <LinearLayout\r\n                android:layout_width=\"match_parent\"\r\n                android:layout_height=\"wrap_content\"\r\n                android:orientation=\"horizontal\"\r\n                android:layout_marginTop=\"24dp\">\r\n\r\n                <Button\r\n                    android:id=\"@+id/btnCancel\"\r\n                    android:layout_width=\"0dp\"\r\n                    android:layout_height=\"56dp\"\r\n                    android:layout_weight=\"1\"\r\n                    android:text=\"Hủy\"\r\n                    android:textColor=\"@color/colorPrimary\"\r\n                    android:background=\"@drawable/button_outline\"\r\n                    android:layout_marginEnd=\"8dp\" />\r\n\r\n                <Button\r\n                    android:id=\"@+id/btnSave\"\r\n                    android:layout_width=\"0dp\"\r\n                    android:layout_height=\"56dp\"\r\n                    android:layout_weight=\"1\"\r\n                    android:text=\"Lưu\"\r\n                    android:textColor=\"@android:color/white\"\r\n                    android:background=\"@color/colorPrimary\"\r\n                    android:layout_marginStart=\"8dp\" />\r\n            </LinearLayout>\r\n        </LinearLayout>\r\n    </ScrollView>\r\n</LinearLayout>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/layout/activity_tao_buoi_hoc.xml b/app/src/main/res/layout/activity_tao_buoi_hoc.xml
+--- a/app/src/main/res/layout/activity_tao_buoi_hoc.xml	(revision 6a947c9eb31a8c372555c5069df0a9599a4d4bd6)
++++ b/app/src/main/res/layout/activity_tao_buoi_hoc.xml	(date 1765973388739)
+@@ -138,19 +138,6 @@
+                             android:background="@drawable/spinner_background" />
+                     </LinearLayout>
+ 
+-                    <com.google.android.material.textfield.TextInputLayout
+-                        android:layout_width="match_parent"
+-                        android:layout_height="wrap_content"
+-                        android:layout_marginTop="16dp"
+-                        android:hint="Ghi chú">
+-
+-                        <com.google.android.material.textfield.TextInputEditText
+-                            android:id="@+id/etGhiChu"
+-                            android:layout_width="match_parent"
+-                            android:layout_height="wrap_content"
+-                            android:inputType="textMultiLine"
+-                            android:minLines="2" />
+-                    </com.google.android.material.textfield.TextInputLayout>
+ 
+                 </LinearLayout>
+             </androidx.cardview.widget.CardView>

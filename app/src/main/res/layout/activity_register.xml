@@ -48,8 +48,16 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Giảng viên"
-            android:layout_marginStart="32dp" />
+            android:layout_marginStart="16dp" />
+
+        <RadioButton
+            android:id="@+id/rbAdmin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Admin"
+            android:layout_marginStart="16dp" />
     </RadioGroup>
+
 
     <Button
         android:id="@+id/btnRegister"
